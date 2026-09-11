@@ -69,7 +69,7 @@ const extras: Record<string, Extra> = {
       {
         by: "System",
         kind: "system",
-        label: "Pushed to Follow Up Boss",
+        label: "Pushed to CRM",
         t: "Sep 8, 7:54 pm",
       },
       {
@@ -103,7 +103,7 @@ const extras: Record<string, Extra> = {
       {
         by: "System",
         kind: "system",
-        label: "Pushed to Follow Up Boss",
+        label: "Pushed to CRM",
         t: "Sep 9, 12:24 pm",
       },
     ],
@@ -121,7 +121,7 @@ const extras: Record<string, Extra> = {
       {
         by: "System",
         kind: "system",
-        label: "Pushed to Follow Up Boss",
+        label: "Pushed to CRM",
         t: "Sep 9, 5:06 pm",
       },
       {
@@ -920,7 +920,7 @@ function LeadDetail({
       </div>
 
       <div className="mt-4 flex items-center justify-between text-sm">
-        <span className="c-label">Follow Up Boss</span>
+        <span className="c-label">CRM</span>
         {row.extra.crm.status === "Synced" ? (
           <a
             className="inline-flex items-center gap-1 font-medium hover:text-brand"

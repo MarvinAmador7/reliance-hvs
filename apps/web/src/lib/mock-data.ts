@@ -483,7 +483,7 @@ export const leads: Lead[] = [
         label: "Requested agent consult · selling in 3 to 6 months",
         t: "17:06",
       },
-      { label: "Pushed to Follow Up Boss", t: "17:06" },
+      { label: "Pushed to CRM", t: "17:06" },
     ],
     id: "L-4818",
     intent: "3 to 6 months",

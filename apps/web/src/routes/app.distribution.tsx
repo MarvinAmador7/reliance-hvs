@@ -179,7 +179,7 @@ function DistributionPage() {
             </div>
           </Field>
           <Field
-            hint="Follow Up Boss connected. Leads sync within seconds, with the full activity timeline."
+            hint="Your CRM is connected. Leads sync within seconds, with the full activity timeline."
             label="Send leads to your CRM"
           >
             <div className="flex h-11 items-center gap-3">
