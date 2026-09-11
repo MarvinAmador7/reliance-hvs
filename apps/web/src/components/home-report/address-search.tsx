@@ -50,7 +50,7 @@ export function AddressSearch({
     setQuery(`${picked.line1}, ${picked.line2}`);
     setOpen(false);
     track("address_selected", picked.line1);
-    navigate({ to: "/hvs/report" });
+    navigate({ to: "/home-report/2148-bayshore-lane" });
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {

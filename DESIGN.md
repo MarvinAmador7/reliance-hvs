@@ -1,6 +1,6 @@
 # Design
 
-Visual system for Reliance HVS. Two surfaces share one language: the public Home Value Site (brand register, themable per brokerage) and the brokerage console (product register, Reliance branded).
+Visual system for Reliance Home Report. Two surfaces share one language: the public Home Report (brand register, themable per brokerage) and the brokerage console (product register, Reliance branded).
 
 ## Scene
 

@@ -2,7 +2,7 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 import { tenantVars, useTenant } from "@/lib/tenant";
 
-export const Route = createFileRoute("/hvs")({
+export const Route = createFileRoute("/home-report")({
   component: HvsLayout,
 });
 
@@ -11,7 +11,7 @@ function HvsLayout() {
   const { tenant } = useTenant();
   return (
     <div
-      className="hvs min-h-svh bg-canvas text-ink"
+      className="home-report min-h-svh bg-canvas text-ink"
       style={tenantVars(tenant)}
     >
       <Outlet />

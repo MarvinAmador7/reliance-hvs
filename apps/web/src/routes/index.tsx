@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { RelianceMark } from "@/components/hvs/tenant-logo";
+import { RelianceMark } from "@/components/home-report/tenant-logo";
 
 const BOTTOM_TOLERANCE = 24;
 
@@ -12,7 +12,7 @@ export const Route = createFileRoute("/")({
 
 const surfaces = [
   {
-    to: "/hvs",
+    to: "/home-report",
     title: "Homeowner experience",
     body: "The public pages a brokerage's visitors see: an address search and a home report that gives the number first, then earns the lead.",
     screens: ["Search", "Home report"],
@@ -20,7 +20,7 @@ const surfaces = [
   {
     to: "/app",
     title: "Brokerage console",
-    body: "Where a brokerage sets up, brands, distributes, and bills its home value site, and watches it as a line of business.",
+    body: "Where a brokerage sets up, brands, distributes, and bills its Home Report, and watches it as a line of business.",
     screens: [
       "Overview",
       "Leads",

@@ -1,8 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { Phone } from "lucide-react";
 
-import { AddressSearch } from "@/components/hvs/address-search";
-import { RelianceMark, TenantLogo } from "@/components/hvs/tenant-logo";
+import { AddressSearch } from "@/components/home-report/address-search";
+import { RelianceMark, TenantLogo } from "@/components/home-report/tenant-logo";
 import { useTenant } from "@/lib/tenant";
 import { track } from "@/lib/track";
 
@@ -13,7 +13,7 @@ export function SiteHeader({ compact = false }: { compact?: boolean }) {
       <Link
         aria-label={`${tenant.name} home value`}
         className="shrink-0"
-        to="/hvs"
+        to="/home-report"
       >
         <TenantLogo />
       </Link>

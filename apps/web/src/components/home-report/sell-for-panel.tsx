@@ -1,8 +1,8 @@
 import { Check, Lock } from "lucide-react";
 import { useState } from "react";
 
-import { AgreementChart } from "@/components/hvs/agreement-chart";
-import { useClaim } from "@/components/hvs/claim-dialog";
+import { AgreementChart } from "@/components/home-report/agreement-chart";
+import { useClaim } from "@/components/home-report/claim-dialog";
 import { fmtMoney } from "@/lib/mock-data";
 import { track } from "@/lib/track";
 

@@ -1,7 +1,7 @@
 import { ArrowUpRight, Check, Eye } from "lucide-react";
 import { useState } from "react";
 
-import { TenantLogo } from "@/components/hvs/tenant-logo";
+import { TenantLogo } from "@/components/home-report/tenant-logo";
 import { fmtMoney } from "@/lib/mock-data";
 import { useTenant } from "@/lib/tenant";
 import { track } from "@/lib/track";

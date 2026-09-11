@@ -8,8 +8,8 @@ import { useTrackedEvents } from "@/lib/track";
 const groups = [
   {
     items: [
-      { label: "Search", to: "/hvs" },
-      { label: "Home report", to: "/hvs/report" },
+      { label: "Search", to: "/home-report" },
+      { label: "Home report", to: "/home-report/2148-bayshore-lane" },
     ],
     title: "Homeowner",
   },

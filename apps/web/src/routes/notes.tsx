@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 
 import { Td, Th } from "@/components/console/ui";
-import { RelianceMark } from "@/components/hvs/tenant-logo";
+import { RelianceMark } from "@/components/home-report/tenant-logo";
 import { eventCatalog } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/notes")({

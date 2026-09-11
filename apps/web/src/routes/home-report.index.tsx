@@ -1,14 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ShieldCheck } from "lucide-react";
 
-import { AddressSearch } from "@/components/hvs/address-search";
-import { Reveal } from "@/components/hvs/motion";
-import { SiteFooter, SiteHeader } from "@/components/hvs/site-chrome";
-import { ValueGauge } from "@/components/hvs/value-gauge";
+import { AddressSearch } from "@/components/home-report/address-search";
+import { Reveal } from "@/components/home-report/motion";
+import { SiteFooter, SiteHeader } from "@/components/home-report/site-chrome";
+import { ValueGauge } from "@/components/home-report/value-gauge";
 import { fmtMoney, photos, property } from "@/lib/mock-data";
 import { useTenant } from "@/lib/tenant";
 
-export const Route = createFileRoute("/hvs/")({
+export const Route = createFileRoute("/home-report/")({
   component: SearchPage,
 });
 

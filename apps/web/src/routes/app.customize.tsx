@@ -11,8 +11,8 @@ import {
 import { useState } from "react";
 
 import { Field, Segmented, Switch } from "@/components/console/ui";
-import { TenantLogo } from "@/components/hvs/tenant-logo";
-import { ValueGauge } from "@/components/hvs/value-gauge";
+import { TenantLogo } from "@/components/home-report/tenant-logo";
+import { ValueGauge } from "@/components/home-report/value-gauge";
 import {
   defaultSections,
   fmtMoney,
@@ -435,7 +435,7 @@ function CustomizePage() {
           </div>
           <div className="flex flex-1 justify-center overflow-hidden rounded-[12px] bg-surface p-4">
             <div
-              className="hvs overflow-hidden rounded-[12px] bg-canvas text-ink shadow-frame transition-[width] duration-300"
+              className="home-report overflow-hidden rounded-[12px] bg-canvas text-ink shadow-frame transition-[width] duration-300"
               style={{
                 ...previewVars,
                 width: device === "phone" ? 390 : "100%",

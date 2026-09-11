@@ -10,7 +10,7 @@ import {
   Share2,
 } from "lucide-react";
 import { Avatar } from "@/components/console/ui";
-import { RelianceMark } from "@/components/hvs/tenant-logo";
+import { RelianceMark } from "@/components/home-report/tenant-logo";
 import { useTenant } from "@/lib/tenant";
 
 const nav = [

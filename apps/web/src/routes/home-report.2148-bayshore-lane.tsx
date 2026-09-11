@@ -20,18 +20,18 @@ import {
   ClaimButton,
   ClaimLink,
   ClaimProvider,
-} from "@/components/hvs/claim-dialog";
-import { CountUp, Reveal } from "@/components/hvs/motion";
-import { SectionNav } from "@/components/hvs/section-nav";
-import { SellForPanel } from "@/components/hvs/sell-for-panel";
-import { SiteFooter, SiteHeader } from "@/components/hvs/site-chrome";
-import { ValueGauge } from "@/components/hvs/value-gauge";
-import { WatchHome } from "@/components/hvs/watch-home";
+} from "@/components/home-report/claim-dialog";
+import { CountUp, Reveal } from "@/components/home-report/motion";
+import { SectionNav } from "@/components/home-report/section-nav";
+import { SellForPanel } from "@/components/home-report/sell-for-panel";
+import { SiteFooter, SiteHeader } from "@/components/home-report/site-chrome";
+import { ValueGauge } from "@/components/home-report/value-gauge";
+import { WatchHome } from "@/components/home-report/watch-home";
 import { fmtMoney, fmtNum, months12, property } from "@/lib/mock-data";
 import { useTenant } from "@/lib/tenant";
 import { track } from "@/lib/track";
 
-export const Route = createFileRoute("/hvs/report")({
+export const Route = createFileRoute("/home-report/2148-bayshore-lane")({
   component: ReportPage,
 });
 
@@ -129,7 +129,7 @@ function ReportPage() {
           <div>
             <Link
               className="inline-flex items-center gap-1.5 text-ink-muted text-sm hover:text-ink md:hidden"
-              to="/hvs"
+              to="/home-report"
             >
               <ArrowLeft aria-hidden="true" className="size-4" />
               Search another address

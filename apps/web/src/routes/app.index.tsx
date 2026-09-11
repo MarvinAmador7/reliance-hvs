@@ -50,7 +50,7 @@ function Overview() {
         <div>
           <h1 className="c-title">Overview</h1>
           <p className="c-label mt-1">
-            How your home value site is performing as a line of business.
+            How your Home Report is performing as a line of business.
           </p>
         </div>
         <div className="flex items-center gap-2">

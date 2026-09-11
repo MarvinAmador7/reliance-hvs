@@ -33,7 +33,7 @@ function DistributionPage() {
   const [utm, setUtm] = useState(true);
   const [crm, setCrm] = useState(true);
 
-  const snippet = `<script async src="https://cdn.reliance.com/hvs.js" data-site="${tenant.id}" data-mode="inline"></script>\n<div id="reliance-hvs"></div>`;
+  const snippet = `<script async src="https://cdn.reliance.com/home-report.js" data-site="${tenant.id}" data-mode="inline"></script>\n<div id="reliance-home-report"></div>`;
 
   return (
     <div className="space-y-6">

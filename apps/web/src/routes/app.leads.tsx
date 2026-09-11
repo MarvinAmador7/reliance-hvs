@@ -241,7 +241,7 @@ function LeadsPage() {
               </button>
               <a
                 className="btn btn-ghost btn-sm"
-                href="/hvs/report"
+                href="/home-report/2148-bayshore-lane"
                 rel="noopener"
                 target="_blank"
               >

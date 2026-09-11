@@ -3,7 +3,7 @@
 /*
   Reliance Home Report design tokens.
   One semantic token set (--c-*) is defined for the platform (Reliance console)
-  and re-defined on the `.hvs` wrapper by the tenant theme, so the same
+  and re-defined on the `.home-report` wrapper by the tenant theme, so the same
   components render on-brand for every brokerage without custom code.
 */
 

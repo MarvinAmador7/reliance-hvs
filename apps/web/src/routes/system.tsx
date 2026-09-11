@@ -6,8 +6,8 @@ import { HBars } from "@/components/charts/hbars";
 import { LineChart } from "@/components/charts/line-chart";
 import { Sparkline } from "@/components/charts/sparkline";
 import { Panel, Pill, Segmented, Switch } from "@/components/console/ui";
-import { RelianceMark, TenantLogo } from "@/components/hvs/tenant-logo";
-import { ValueGauge } from "@/components/hvs/value-gauge";
+import { RelianceMark, TenantLogo } from "@/components/home-report/tenant-logo";
+import { ValueGauge } from "@/components/home-report/value-gauge";
 import {
   contrastRatio,
   readTypeMetrics,
@@ -362,7 +362,7 @@ function SystemPage() {
           })}
         </div>
 
-        <div className="hvs space-y-20" style={tenantVars(tenant)}>
+        <div className="home-report space-y-20" style={tenantVars(tenant)}>
           <Section
             intro="One family, Hanken Grotesk, on both surfaces. Public pages use a fluid scale; the console uses fixed sizes."
             title="Type"
