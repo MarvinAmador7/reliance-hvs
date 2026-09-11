@@ -25,7 +25,19 @@ import {
   Td,
   Th,
 } from "@/components/console/ui";
-import { fmtMoney, type Lead, leads, photos } from "@/lib/mock-data";
+import {
+  type AgentAction,
+  agents,
+  HOT_THRESHOLD,
+  homesHint,
+  initialsOf,
+  type Row,
+  rows,
+  scoreTone,
+  statusTone,
+  typeTone,
+} from "@/lib/leads";
+import { fmtMoney } from "@/lib/mock-data";
 import { track } from "@/lib/track";
 
 export const Route = createFileRoute("/app/leads")({
@@ -33,314 +45,6 @@ export const Route = createFileRoute("/app/leads")({
 });
 
 /* ---------- Enriched mock model ---------- */
-
-type LeadType = "Consult" | "Watch" | "Claimed" | "Buyers";
-
-interface AgentAction {
-  by: string;
-  kind: "note" | "call" | "email" | "system";
-  label: string;
-  t: string;
-}
-
-interface Claim {
-  at: string;
-  edits: string[];
-  ownedSince: number;
-  provider: "Google" | "Apple" | "Facebook";
-}
-
-interface ViewedHome {
-  address: string;
-  area: string;
-  value: number;
-  views: number;
-  when: string;
-}
-
-interface Watch {
-  lastOpened?: string;
-  next: string;
-  opened: number;
-  sent: number;
-  since: string;
-}
-
-interface Extra {
-  actions: AgentAction[];
-  claim?: Claim;
-  crm: { status: "Synced" | "Pending" | "Not sent"; id?: string };
-  equity: number;
-  homes?: ViewedHome[];
-  nextStep: string;
-  photo: string;
-  reasons: string[];
-  score: number;
-  type: LeadType;
-  watch?: Watch;
-}
-
-const fallbackExtra: Extra = {
-  actions: [],
-  crm: { status: "Not sent" },
-  equity: 0,
-  nextStep: "Assign an agent.",
-  photo: photos.comps[3],
-  reasons: [],
-  score: 20,
-  type: "Watch",
-};
-
-const extras: Record<string, Extra> = {
-  "L-4816": {
-    actions: [
-      {
-        by: "System",
-        kind: "system",
-        label: "Pushed to CRM",
-        t: "Sep 8, 7:54 pm",
-      },
-      {
-        by: "Luis Ferrer",
-        kind: "call",
-        label: "Called, left voicemail",
-        t: "Sep 9, 9:10 am",
-      },
-      {
-        by: "Luis Ferrer",
-        kind: "note",
-        label:
-          "Neighbor of a past client. Wants a CMA before listing in November.",
-        t: "Sep 9, 9:12 am",
-      },
-    ],
-    claim: {
-      at: "Sep 9, 7:51 pm",
-      edits: [],
-      ownedSince: 2009,
-      provider: "Apple",
-    },
-    crm: { id: "FUB-88104", status: "Synced" },
-    equity: 1_725_000 - 610_000,
-    nextStep: "Follow up on the voicemail; offer a Saturday visit.",
-    photo: photos.comps[1],
-    reasons: [
-      "Claimed the home",
-      "Selling within 3 months",
-      "Requested a visit",
-      "Returned twice this week",
-    ],
-    score: 88,
-    type: "Consult",
-  },
-  "L-4817": {
-    actions: [
-      {
-        by: "System",
-        kind: "system",
-        label: "Pushed to CRM",
-        t: "Sep 9, 12:24 pm",
-      },
-    ],
-    crm: { id: "FUB-88110", status: "Synced" },
-    equity: 890_000 - 512_000,
-    nextStep:
-      "Low intent. Let the monthly update do the work; check back in 60 days.",
-    photo: photos.comps[3],
-    reasons: ["Subscribed to monthly updates", "Just curious"],
-    score: 24,
-    watch: { next: "Oct 1", opened: 0, sent: 0, since: "Sep 9" },
-    type: "Watch",
-  },
-  "L-4818": {
-    actions: [
-      {
-        by: "System",
-        kind: "system",
-        label: "Pushed to CRM",
-        t: "Sep 9, 5:06 pm",
-      },
-      {
-        by: "Dana Whitfield",
-        kind: "email",
-        label: "Sent the buyer list and a Coral Gables comp sheet",
-        t: "Sep 9, 6:40 pm",
-      },
-    ],
-    crm: { id: "FUB-88121", status: "Synced" },
-    equity: 1_560_000 - 402_000,
-    homes: [
-      {
-        address: "1315 Andora Ave, Coral Gables",
-        area: "33146",
-        value: 1_490_000,
-        views: 2,
-        when: "Yesterday",
-      },
-      {
-        address: "1508 Cordova St, Coral Gables",
-        area: "33134",
-        value: 1_275_000,
-        views: 1,
-        when: "Yesterday",
-      },
-    ],
-    nextStep: "Ask which of the 19 buyers they'd like introduced.",
-    photo: photos.comps[0],
-    reasons: [
-      "Viewed 19 buyer matches",
-      "Selling in 3 to 6 months",
-      "Came back from the monthly email",
-    ],
-    score: 76,
-    watch: {
-      lastOpened: "Sep 9, 5:02 pm",
-      next: "Oct 1",
-      opened: 3,
-      sent: 3,
-      since: "Jun 2",
-    },
-    type: "Buyers",
-  },
-  "L-4819": {
-    actions: [
-      {
-        by: "Luis Ferrer",
-        kind: "call",
-        label: "Spoke for 12 minutes. Wants to finish the kitchen first.",
-        t: "Sep 10, 10:02 am",
-      },
-      {
-        by: "Luis Ferrer",
-        kind: "note",
-        label: "Set a reminder for March.",
-        t: "Sep 10, 10:05 am",
-      },
-    ],
-    claim: {
-      at: "Sep 10, 8:36 am",
-      edits: ["Condition set to Excellent"],
-      ownedSince: 2016,
-      provider: "Google",
-    },
-    crm: { status: "Pending" },
-    equity: 2_140_000 - 780_000,
-    nextStep:
-      "Send the condition guide; they claimed the home and set it to Excellent.",
-    photo: photos.comps[2],
-    reasons: [
-      "Claimed the home",
-      "Adjusted condition to Excellent",
-      "Selling in 6 to 12 months",
-    ],
-    score: 61,
-    watch: { next: "Oct 1", opened: 0, sent: 0, since: "Sep 10" },
-    type: "Claimed",
-  },
-  "L-4820": {
-    actions: [],
-    crm: { status: "Not sent" },
-    equity: 918_000 - 455_000,
-    homes: [
-      {
-        address: "6130 SW 82nd St, South Miami",
-        area: "33143",
-        value: 1_050_000,
-        views: 2,
-        when: "35 min ago",
-      },
-      {
-        address: "7901 SW 58th Ct, South Miami",
-        area: "33143",
-        value: 865_000,
-        views: 1,
-        when: "31 min ago",
-      },
-      {
-        address: "9640 SW 67th Ave, Pinecrest",
-        area: "33156",
-        value: 1_420_000,
-        views: 3,
-        when: "22 min ago",
-      },
-    ],
-    nextStep:
-      "Assign an agent; unlocked buyer matches from a Meta ad 38 minutes ago.",
-    photo: photos.comps[3],
-    reasons: [
-      "Viewed 4 homes in 38 minutes",
-      "Unlocked buyer matches",
-      "First visit, from a Meta ad",
-    ],
-    score: 42,
-    type: "Buyers",
-  },
-  "L-4821": {
-    actions: [],
-    crm: { status: "Not sent" },
-    equity: 1_284_000 - 486_000,
-    homes: [
-      {
-        address: "2214 Bayshore Ln, Coconut Grove",
-        area: "33133",
-        value: 1_310_000,
-        views: 1,
-        when: "10:43",
-      },
-    ],
-    nextStep:
-      "Call within the hour. Requested a visit and is selling within 3 months.",
-    photo: photos.subject,
-    reasons: [
-      "Checked a neighbor's home",
-      "Selling within 3 months",
-      "Requested a visit",
-      "Used the sale-price slider 3 times",
-    ],
-    score: 94,
-    type: "Consult",
-  },
-};
-
-interface Row extends Lead {
-  extra: Extra;
-}
-
-const rows: Row[] = leads.map((l) => ({
-  ...l,
-  extra: extras[l.id] ?? fallbackExtra,
-}));
-
-const HOT_THRESHOLD = 75;
-
-interface AgentOption {
-  coverage: string;
-  load: number;
-  name: string;
-  photo?: string;
-  response: string;
-  suggested?: boolean;
-}
-
-const agents: AgentOption[] = [
-  {
-    coverage: "33133, 33146",
-    load: 12,
-    name: "Dana Whitfield",
-    photo: "https://randomuser.me/api/portraits/women/44.jpg",
-    response: "22 min",
-    suggested: true,
-  },
-  {
-    coverage: "33143, 33156",
-    load: 9,
-    name: "Luis Ferrer",
-    photo: "https://randomuser.me/api/portraits/men/54.jpg",
-    response: "41 min",
-  },
-  { coverage: "33129", load: 5, name: "Ana Reyes", response: "1 h 10 min" },
-  { coverage: "33133", load: 7, name: "James Kim", response: "35 min" },
-];
 
 const views = [
   { label: "All", value: "all" },
@@ -358,46 +62,7 @@ const sorts = [
 ] as const;
 type Sort = (typeof sorts)[number]["value"];
 
-const typeTone: Record<LeadType, "brand" | "neutral" | "good" | "warn"> = {
-  Buyers: "brand",
-  Claimed: "good",
-  Consult: "warn",
-  Watch: "neutral",
-};
-
-const statusTone = (status: Lead["status"]): "brand" | "good" | "neutral" => {
-  if (status === "New") {
-    return "brand";
-  }
-  return status === "Synced" ? "good" : "neutral";
-};
-
-const scoreTone = (score: number): string => {
-  if (score >= HOT_THRESHOLD) {
-    return "bg-[oklch(0.94_0.06_40)] text-[oklch(0.45_0.15_35)]";
-  }
-  if (score >= 50) {
-    return "bg-brand-soft text-brand";
-  }
-  return "bg-surface text-ink-muted";
-};
-
-const homesHint = (row: Row): string => {
-  const homes = row.extra.homes ?? [];
-  const areas = new Set([row.area, ...homes.map((h) => h.area)]);
-  if (areas.size === 1) {
-    return "All in the same area. Reads like an owner comparing with neighbors before selling.";
-  }
-  return `Across ${areas.size} areas. Reads like a buyer shopping, not an owner checking one home.`;
-};
-
 const selectedIds = (row: Row | undefined): string[] => (row ? [row.id] : []);
-
-const initialsOf = (name: string) =>
-  name
-    .split(" ")
-    .map((p) => p[0])
-    .join("");
 
 interface Filters {
   agent: string;
@@ -861,7 +526,7 @@ function LeadRow({
       <Td>
         <span
           className={`tabular inline-flex h-6 min-w-9 items-center justify-center rounded-full px-2 font-semibold text-xs ${scoreTone(row.extra.score)}`}
-          title={row.extra.reasons.join(" · ")}
+          title={row.extra.signals.map((s) => s.label).join(" · ")}
         >
           {row.extra.score}
         </span>
@@ -973,6 +638,15 @@ function LeadDetail({
         </Pill>
       </div>
 
+      <Link
+        className="mt-3 inline-flex items-center gap-1 font-medium text-brand text-sm hover:underline"
+        params={{ id: row.id }}
+        to="/app/leads/$id"
+      >
+        Open full profile
+        <ArrowUpRight aria-hidden="true" className="size-3.5" />
+      </Link>
+
       <div className="mt-4 flex flex-wrap gap-2">
         <a
           className="btn btn-brand btn-sm"
@@ -1081,13 +755,13 @@ function LeadDetail({
           </span>
         </div>
         <ul className="mt-2 space-y-1 text-sm">
-          {row.extra.reasons.map((r) => (
-            <li className="flex items-center gap-2" key={r}>
+          {row.extra.signals.map((s) => (
+            <li className="flex items-center gap-2" key={s.label}>
               <ArrowUpRight
                 aria-hidden="true"
                 className="size-3.5 text-brand"
               />
-              {r}
+              {s.label}
             </li>
           ))}
         </ul>

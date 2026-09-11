@@ -320,6 +320,16 @@
   .rise-4 {
     animation-delay: 270ms;
   }
+  /* Score bar fill on the lead page. Reduced motion renders the final state. */
+  .grow-x {
+    transform-origin: left;
+    animation: grow-x 600ms var(--ease-out-quint) both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .grow-x {
+      animation: none;
+    }
+  }
 
   /*
     Scroll-driven reveal. Fill mode is forwards only, so anything that has not entered the
@@ -379,6 +389,12 @@
 @keyframes appear {
   to {
     opacity: 1;
+  }
+}
+
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
   }
 }
 

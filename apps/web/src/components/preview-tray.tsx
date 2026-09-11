@@ -17,6 +17,7 @@ const groups = [
     items: [
       { label: "Overview", to: "/app" },
       { label: "Leads", to: "/app/leads" },
+      { label: "Lead profile", params: { id: "L-4821" }, to: "/app/leads/$id" },
       { label: "Sites & widgets", to: "/app/sites" },
       { label: "Customize", to: "/app/customize" },
       { label: "Distribution", to: "/app/distribution" },
@@ -102,9 +103,13 @@ export function PreviewTray() {
               </div>
               <ul className="grid grid-cols-2 gap-1">
                 {g.items.map((item) => {
-                  const active = pathname === item.to;
+                  const href =
+                    "params" in item
+                      ? item.to.replace("$id", item.params.id)
+                      : item.to;
+                  const active = pathname === href;
                   return (
-                    <li key={item.to}>
+                    <li key={href}>
                       <Link
                         className={`block rounded-lg px-2 py-1.5 text-[0.8125rem] transition-colors ${
                           active
@@ -112,6 +117,7 @@ export function PreviewTray() {
                             : "text-[oklch(0.25_0_0)] hover:bg-[oklch(0.96_0_0)]"
                         }`}
                         onClick={() => setOpen(false)}
+                        params={"params" in item ? item.params : undefined}
                         to={item.to}
                       >
                         {item.label}
