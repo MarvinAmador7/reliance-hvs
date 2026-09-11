@@ -4,16 +4,15 @@ import viteReact from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
 
-export default defineConfig({
-  server: {
-    port: 3001,
-  },
+export default defineConfig(({ command }) => ({
+  plugins: [tailwindcss(), tanstackStart(), nitro(), viteReact()],
   resolve: {
     tsconfigPaths: true,
   },
-  plugins: [tailwindcss(), tanstackStart(), nitro(), viteReact()],
-  // Bundle all SSR deps: Vercel functions have no node_modules at runtime
-  ssr: {
-    noExternal: true,
+  server: {
+    port: 3001,
   },
-});
+  // Bundle all SSR deps for production: Vercel functions have no node_modules at runtime.
+  // In dev, bundling React as ESM breaks (`module is not defined`), so keep externals there.
+  ssr: command === "build" ? { noExternal: true } : undefined,
+}));

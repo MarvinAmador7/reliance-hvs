@@ -1,25 +1,22 @@
 import { createRouter as createTanStackRouter } from "@tanstack/react-router";
-import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 
 import Loader from "./components/loader";
 import { routeTree } from "./routeTree.gen";
-import { createQueryClient, orpc } from "./utils/orpc";
 
 export const getRouter = () => {
-  const queryClient = createQueryClient();
-
   const router = createTanStackRouter({
+    defaultNotFoundComponent: () => (
+      <div className="wrap sec">
+        <h1 className="t-h2">Page not found</h1>
+        <p className="t-body mt-3 text-ink-muted">
+          This preview link doesn't exist.
+        </p>
+      </div>
+    ),
+    defaultPendingComponent: () => <Loader />,
+    defaultPreloadStaleTime: 0,
     routeTree,
     scrollRestoration: true,
-    defaultPreloadStaleTime: 0,
-    context: { orpc, queryClient },
-    defaultPendingComponent: () => <Loader />,
-    defaultNotFoundComponent: () => <div>Not Found</div>,
-  });
-
-  setupRouterSsrQueryIntegration({
-    router,
-    queryClient,
   });
 
   return router;

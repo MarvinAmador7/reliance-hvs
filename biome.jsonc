@@ -1,4 +1,16 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-  "extends": ["ultracite/biome/core", "ultracite/biome/react", "ultracite/biome/tanstack"],
+  "extends": [
+    "ultracite/biome/core",
+    "ultracite/biome/react",
+    "ultracite/biome/tanstack"
+  ],
+  "linter": {
+    "rules": {
+      "performance": {
+        // Inline handlers in JSX are idiomatic React 19; the re-render cost is negligible for this UI.
+        "noJsxPropsBind": "off"
+      }
+    }
+  }
 }
