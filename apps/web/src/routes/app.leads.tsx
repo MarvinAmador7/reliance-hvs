@@ -50,6 +50,14 @@ interface Claim {
   provider: "Google" | "Apple" | "Facebook";
 }
 
+interface ViewedHome {
+  address: string;
+  area: string;
+  value: number;
+  views: number;
+  when: string;
+}
+
 interface Watch {
   lastOpened?: string;
   next: string;
@@ -63,6 +71,7 @@ interface Extra {
   claim?: Claim;
   crm: { status: "Synced" | "Pending" | "Not sent"; id?: string };
   equity: number;
+  homes?: ViewedHome[];
   nextStep: string;
   photo: string;
   reasons: string[];
@@ -160,6 +169,22 @@ const extras: Record<string, Extra> = {
     ],
     crm: { id: "FUB-88121", status: "Synced" },
     equity: 1_560_000 - 402_000,
+    homes: [
+      {
+        address: "1315 Andora Ave, Coral Gables",
+        area: "33146",
+        value: 1_490_000,
+        views: 2,
+        when: "Yesterday",
+      },
+      {
+        address: "1508 Cordova St, Coral Gables",
+        area: "33134",
+        value: 1_275_000,
+        views: 1,
+        when: "Yesterday",
+      },
+    ],
     nextStep: "Ask which of the 19 buyers they'd like introduced.",
     photo: photos.comps[0],
     reasons: [
@@ -216,10 +241,37 @@ const extras: Record<string, Extra> = {
     actions: [],
     crm: { status: "Not sent" },
     equity: 918_000 - 455_000,
+    homes: [
+      {
+        address: "6130 SW 82nd St, South Miami",
+        area: "33143",
+        value: 1_050_000,
+        views: 2,
+        when: "35 min ago",
+      },
+      {
+        address: "7901 SW 58th Ct, South Miami",
+        area: "33143",
+        value: 865_000,
+        views: 1,
+        when: "31 min ago",
+      },
+      {
+        address: "9640 SW 67th Ave, Pinecrest",
+        area: "33156",
+        value: 1_420_000,
+        views: 3,
+        when: "22 min ago",
+      },
+    ],
     nextStep:
       "Assign an agent; unlocked buyer matches from a Meta ad 38 minutes ago.",
     photo: photos.comps[3],
-    reasons: ["Unlocked buyer matches", "First visit, from a Meta ad"],
+    reasons: [
+      "Viewed 4 homes in 38 minutes",
+      "Unlocked buyer matches",
+      "First visit, from a Meta ad",
+    ],
     score: 42,
     type: "Buyers",
   },
@@ -227,10 +279,20 @@ const extras: Record<string, Extra> = {
     actions: [],
     crm: { status: "Not sent" },
     equity: 1_284_000 - 486_000,
+    homes: [
+      {
+        address: "2214 Bayshore Ln, Coconut Grove",
+        area: "33133",
+        value: 1_310_000,
+        views: 1,
+        when: "10:43",
+      },
+    ],
     nextStep:
       "Call within the hour. Requested a visit and is selling within 3 months.",
     photo: photos.subject,
     reasons: [
+      "Checked a neighbor's home",
       "Selling within 3 months",
       "Requested a visit",
       "Used the sale-price slider 3 times",
@@ -318,6 +380,15 @@ const scoreTone = (score: number): string => {
     return "bg-brand-soft text-brand";
   }
   return "bg-surface text-ink-muted";
+};
+
+const homesHint = (row: Row): string => {
+  const homes = row.extra.homes ?? [];
+  const areas = new Set([row.area, ...homes.map((h) => h.area)]);
+  if (areas.size === 1) {
+    return "All in the same area. Reads like an owner comparing with neighbors before selling.";
+  }
+  return `Across ${areas.size} areas. Reads like a buyer shopping, not an owner checking one home.`;
 };
 
 const selectedIds = (row: Row | undefined): string[] => (row ? [row.id] : []);
@@ -797,7 +868,12 @@ function LeadRow({
       </Td>
       <Td>
         <div className="max-w-[14rem] truncate">{row.address}</div>
-        <div className="c-label tabular">{fmtMoney(row.value, true)}</div>
+        <div className="c-label tabular">
+          {fmtMoney(row.value, true)}
+          {row.extra.homes
+            ? ` · +${row.extra.homes.length} ${row.extra.homes.length === 1 ? "home" : "homes"}`
+            : null}
+        </div>
       </Td>
       <Td className={agent === "Unassigned" ? "text-ink-muted" : ""}>
         {agent}
@@ -919,7 +995,17 @@ function LeadDetail({
         </button>
       </div>
 
-      <div className="mt-5 flex gap-3 rounded-[12px] border border-line p-3">
+      {row.extra.homes ? (
+        <div className="mt-5 flex items-baseline justify-between">
+          <h3 className="c-label font-medium">Their home</h3>
+          <span className="c-label tabular">
+            {row.extra.homes.length + 1} homes viewed
+          </span>
+        </div>
+      ) : null}
+      <div
+        className={`${row.extra.homes ? "mt-2" : "mt-5"} flex gap-3 rounded-[12px] border border-line p-3`}
+      >
         <img
           alt=""
           className="size-16 shrink-0 rounded-[10px] object-cover"
@@ -953,6 +1039,37 @@ function LeadDetail({
           <ExternalLink aria-hidden="true" className="size-4" />
         </Link>
       </div>
+      {row.extra.homes ? (
+        <div className="mt-2 rounded-[12px] border border-line">
+          <h3 className="c-label px-3 pt-2.5 font-medium">Also viewed</h3>
+          <ul className="divide-y divide-line px-3">
+            {row.extra.homes.map((h) => (
+              <li
+                className="flex items-center justify-between gap-3 py-2 text-sm"
+                key={h.address}
+              >
+                <div className="min-w-0">
+                  <div className="truncate">{h.address}</div>
+                  <div className="c-label">
+                    {h.area} · {h.when}
+                  </div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className="tabular font-medium">
+                    {fmtMoney(h.value, true)}
+                  </div>
+                  <div className="c-label tabular">
+                    {h.views} {h.views === 1 ? "view" : "views"}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p className="c-label border-line border-t px-3 py-2">
+            {homesHint(row)}
+          </p>
+        </div>
+      ) : null}
 
       <div className="mt-4 rounded-[12px] bg-surface p-3">
         <div className="flex items-center justify-between">
