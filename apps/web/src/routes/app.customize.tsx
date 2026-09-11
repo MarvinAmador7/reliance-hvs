@@ -457,9 +457,7 @@ function CustomizePage() {
   const [logo, setLogo] = useState<string | null>(null);
   const [typeface, setTypeface] = useState<Typeface>("reliance");
   const [changes, setChanges] = useState(0);
-  const [lastPublished, setLastPublished] = useState(
-    "Tue, 2:14 pm by Maya Ortiz"
-  );
+  const [lastPublished, setLastPublished] = useState("Tue, 2:14 pm");
   const [history, setHistory] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -579,7 +577,7 @@ function CustomizePage() {
         <div className="flex flex-wrap items-center gap-2">
           {changes > 0 ? (
             <Pill dot tone="warn">
-              {changes} unpublished {changes === 1 ? "change" : "changes"}
+              {changes} unpublished
             </Pill>
           ) : (
             <Pill tone="neutral">Up to date</Pill>
@@ -605,7 +603,7 @@ function CustomizePage() {
             disabled={changes === 0}
             onClick={() => {
               setChanges(0);
-              setLastPublished("just now by Maya Ortiz");
+              setLastPublished("just now");
             }}
             type="button"
           >
