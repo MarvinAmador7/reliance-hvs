@@ -525,6 +525,7 @@ export const leads: Lead[] = [
     events: [
       { label: "Opened from postcard QR", t: "19:48" },
       { label: "Selected 3480 Poinciana Ave", t: "19:49" },
+      { label: "Claimed the home · signed in with Apple", t: "19:51" },
       {
         label: "Requested agent consult · selling within 3 months",
         t: "19:53",

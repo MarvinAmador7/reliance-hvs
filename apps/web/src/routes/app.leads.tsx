@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowUpRight,
+  BadgeCheck,
   Check,
   Download,
   ExternalLink,
@@ -42,6 +43,13 @@ interface AgentAction {
   t: string;
 }
 
+interface Claim {
+  at: string;
+  edits: string[];
+  ownedSince: number;
+  provider: "Google" | "Apple" | "Facebook";
+}
+
 interface Watch {
   lastOpened?: string;
   next: string;
@@ -52,6 +60,7 @@ interface Watch {
 
 interface Extra {
   actions: AgentAction[];
+  claim?: Claim;
   crm: { status: "Synced" | "Pending" | "Not sent"; id?: string };
   equity: number;
   nextStep: string;
@@ -96,11 +105,18 @@ const extras: Record<string, Extra> = {
         t: "Sep 9, 9:12 am",
       },
     ],
+    claim: {
+      at: "Sep 9, 7:51 pm",
+      edits: [],
+      ownedSince: 2009,
+      provider: "Apple",
+    },
     crm: { id: "FUB-88104", status: "Synced" },
     equity: 1_725_000 - 610_000,
     nextStep: "Follow up on the voicemail; offer a Saturday visit.",
     photo: photos.comps[1],
     reasons: [
+      "Claimed the home",
       "Selling within 3 months",
       "Requested a visit",
       "Returned twice this week",
@@ -176,6 +192,12 @@ const extras: Record<string, Extra> = {
         t: "Sep 10, 10:05 am",
       },
     ],
+    claim: {
+      at: "Sep 10, 8:36 am",
+      edits: ["Condition set to Excellent"],
+      ownedSince: 2016,
+      provider: "Google",
+    },
     crm: { status: "Pending" },
     equity: 2_140_000 - 780_000,
     nextStep:
@@ -264,6 +286,7 @@ const views = [
   { label: "Hot this week", value: "hot" },
   { label: "New", value: "new" },
   { label: "Watching", value: "watching" },
+  { label: "Claimed", value: "claimed" },
 ] as const;
 type View = (typeof views)[number]["value"];
 
@@ -333,6 +356,9 @@ const matchesView = (row: Row, view: View, assigned: string): boolean => {
   }
   if (view === "watching") {
     return row.extra.watch !== undefined;
+  }
+  if (view === "claimed") {
+    return row.extra.claim !== undefined;
   }
   return true;
 };
@@ -735,8 +761,14 @@ function LeadRow({
         />
       </td>
       <Td>
-        <div className="flex items-center gap-1.5 whitespace-nowrap font-medium">
-          {row.name}
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 font-medium">
+          <span className="whitespace-nowrap">{row.name}</span>
+          {row.extra.claim ? (
+            <BadgeCheck
+              aria-label="Claimed the home"
+              className="size-3.5 text-good"
+            />
+          ) : null}
           {row.extra.watch ? (
             <Eye
               aria-label="Watching monthly updates"
@@ -948,62 +980,121 @@ function LeadDetail({
         </p>
       </div>
 
-      <div className="mt-4 rounded-[12px] border border-line p-3">
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-1.5 font-medium text-sm">
-            <Eye aria-hidden="true" className="size-4 text-ink-muted" />
-            Monthly updates
-          </span>
-          {row.extra.watch ? (
-            <Pill dot tone="good">
-              Subscribed
-            </Pill>
+      <div className="mt-4 divide-y divide-line rounded-[12px] border border-line">
+        <div className="p-3">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 font-medium text-sm">
+              <BadgeCheck
+                aria-hidden="true"
+                className="size-4 text-ink-muted"
+              />
+              Claimed home
+            </span>
+            {row.extra.claim ? (
+              <Pill dot tone="good">
+                Verified owner
+              </Pill>
+            ) : (
+              <Pill tone="neutral">Not claimed</Pill>
+            )}
+          </div>
+          {row.extra.claim ? (
+            <>
+              <dl className="mt-3 grid grid-cols-3 gap-3 text-sm">
+                <div>
+                  <dt className="c-label">Claimed</dt>
+                  <dd className="mt-0.5 font-medium">{row.extra.claim.at}</dd>
+                </div>
+                <div>
+                  <dt className="c-label">Signed in with</dt>
+                  <dd className="mt-0.5 font-medium">
+                    {row.extra.claim.provider}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="c-label">Owner since</dt>
+                  <dd className="tabular mt-0.5 font-medium">
+                    {row.extra.claim.ownedSince}
+                  </dd>
+                </div>
+              </dl>
+              <p className="c-label mt-2">
+                {row.extra.claim.edits.length > 0
+                  ? `Edited the report: ${row.extra.claim.edits.join(", ")}.`
+                  : "No edits to the report yet."}
+              </p>
+            </>
           ) : (
-            <Pill tone="neutral">Not subscribed</Pill>
-          )}
-        </div>
-        {row.extra.watch ? (
-          <>
-            <dl className="mt-3 grid grid-cols-3 gap-3 text-sm">
-              <div>
-                <dt className="c-label">Since</dt>
-                <dd className="mt-0.5 font-medium">{row.extra.watch.since}</dd>
-              </div>
-              <div>
-                <dt className="c-label">Sent · opened</dt>
-                <dd className="tabular mt-0.5 font-medium">
-                  {row.extra.watch.sent} · {row.extra.watch.opened}
-                </dd>
-              </div>
-              <div>
-                <dt className="c-label">Next send</dt>
-                <dd className="mt-0.5 font-medium">{row.extra.watch.next}</dd>
-              </div>
-            </dl>
-            <p className="c-label mt-2">
-              {row.extra.watch.lastOpened
-                ? `Last opened ${row.extra.watch.lastOpened}.`
-                : "No update sent yet. The first one goes out with the next monthly run."}
-            </p>
-            <div className="mt-3 flex gap-2">
-              <button className="btn btn-ghost btn-sm" type="button">
-                <Send aria-hidden="true" className="size-3.5" /> Send now
-              </button>
-              <button className="c-label px-2 hover:text-ink" type="button">
-                Unsubscribe
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <p className="c-label">
+                Has not claimed this home. Claiming verifies ownership and
+                unlocks report edits.
+              </p>
+              <button className="btn btn-ghost btn-sm shrink-0" type="button">
+                Invite to claim
               </button>
             </div>
-          </>
-        ) : (
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <p className="c-label">
-              Not watching this home. An invite adds them to the monthly run.
-            </p>
-            <button className="btn btn-ghost btn-sm shrink-0" type="button">
-              Invite to watch
-            </button>
+          )}
+        </div>
+        <div className="p-3">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 font-medium text-sm">
+              <Eye aria-hidden="true" className="size-4 text-ink-muted" />
+              Monthly updates
+            </span>
+            {row.extra.watch ? (
+              <Pill dot tone="good">
+                Subscribed
+              </Pill>
+            ) : (
+              <Pill tone="neutral">Not subscribed</Pill>
+            )}
           </div>
-        )}
+          {row.extra.watch ? (
+            <>
+              <dl className="mt-3 grid grid-cols-3 gap-3 text-sm">
+                <div>
+                  <dt className="c-label">Since</dt>
+                  <dd className="mt-0.5 font-medium">
+                    {row.extra.watch.since}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="c-label">Sent · opened</dt>
+                  <dd className="tabular mt-0.5 font-medium">
+                    {row.extra.watch.sent} · {row.extra.watch.opened}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="c-label">Next send</dt>
+                  <dd className="mt-0.5 font-medium">{row.extra.watch.next}</dd>
+                </div>
+              </dl>
+              <p className="c-label mt-2">
+                {row.extra.watch.lastOpened
+                  ? `Last opened ${row.extra.watch.lastOpened}.`
+                  : "No update sent yet. The first one goes out with the next monthly run."}
+              </p>
+              <div className="mt-3 flex gap-2">
+                <button className="btn btn-ghost btn-sm" type="button">
+                  <Send aria-hidden="true" className="size-3.5" /> Send now
+                </button>
+                <button className="c-label px-2 hover:text-ink" type="button">
+                  Unsubscribe
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <p className="c-label">
+                Not watching this home. An invite adds them to the monthly run.
+              </p>
+              <button className="btn btn-ghost btn-sm shrink-0" type="button">
+                Invite to watch
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <h3 className="c-label mt-5 mb-2 font-medium">Activity</h3>
