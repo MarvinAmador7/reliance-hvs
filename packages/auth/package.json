@@ -1,0 +1,24 @@
+{
+  "name": "@reliance-hvs/auth",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@reliance-hvs/db": "workspace:*",
+    "@reliance-hvs/env": "workspace:*",
+    "better-auth": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@reliance-hvs/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}
