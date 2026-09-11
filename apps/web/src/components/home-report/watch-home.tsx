@@ -30,7 +30,7 @@ export function WatchHome({
   const [subscribed, setSubscribed] = useState(false);
 
   return (
-    <div className="wrap sec grid items-center gap-12 md:grid-cols-[1.1fr_1fr] md:gap-16">
+    <div className="wrap sec grid @3xl:grid-cols-[1.1fr_1fr] items-center @3xl:gap-16 gap-12">
       <div>
         <h2 className="t-h2 max-w-[16ch] text-brand-ink">Watch this home.</h2>
         <p className="t-lead mt-4 max-w-[40ch] text-brand-ink/80">
@@ -57,7 +57,7 @@ export function WatchHome({
               track("updates_subscribed", addressLine1);
             }}
           >
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid @xl:grid-cols-2 gap-3">
               <label className="block">
                 <span className="sr-only">First name</span>
                 <input
@@ -79,7 +79,7 @@ export function WatchHome({
                 />
               </label>
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="flex @xl:flex-row flex-col gap-3">
               <label className="block flex-1">
                 <span className="sr-only">Email address</span>
                 <input
@@ -108,9 +108,9 @@ export function WatchHome({
 
       <figure
         aria-label="Preview of the monthly update email"
-        className="md:justify-self-end"
+        className="@3xl:justify-self-end"
       >
-        <div className="w-full max-w-md rounded-3xl bg-canvas p-6 text-ink shadow-frame md:p-7">
+        <div className="w-full max-w-md rounded-3xl bg-canvas @3xl:p-7 p-6 text-ink shadow-frame">
           <div className="flex items-center justify-between gap-4">
             <TenantLogo size="sm" />
             <span className="text-ink-muted text-sm">
@@ -166,7 +166,7 @@ export function WatchHome({
             </div>
           </div>
         </div>
-        <figcaption className="mt-3 text-center text-brand-ink/70 text-sm md:text-right">
+        <figcaption className="mt-3 text-center @3xl:text-right text-brand-ink/70 text-sm">
           What your first update will look like.
         </figcaption>
       </figure>

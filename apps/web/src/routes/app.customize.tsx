@@ -1,24 +1,28 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
+  ArrowLeft,
+  Check,
   ChevronDown,
   ChevronUp,
+  Clock,
+  ExternalLink,
   GripVertical,
   Lock,
-  Monitor,
-  Smartphone,
+  RotateCcw,
   Upload,
 } from "lucide-react";
-import { useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 
-import { Field, Segmented, Switch } from "@/components/console/ui";
+import { ColumnChart } from "@/components/charts/column-chart";
+import { CompsMap } from "@/components/charts/comps-map";
+import { HBars } from "@/components/charts/hbars";
+import { Field, Pill, Segmented, Switch } from "@/components/console/ui";
+import { SellForPanel } from "@/components/home-report/sell-for-panel";
 import { TenantLogo } from "@/components/home-report/tenant-logo";
 import { ValueGauge } from "@/components/home-report/value-gauge";
-import {
-  defaultSections,
-  fmtMoney,
-  property,
-  type SectionConfig,
-} from "@/lib/mock-data";
+import { WatchHome } from "@/components/home-report/watch-home";
+import { contrastRatio } from "@/lib/measure";
+import { fmtMoney, fmtNum, months12, property } from "@/lib/mock-data";
 import {
   type TenantId,
   tenantOrder,
@@ -31,95 +35,495 @@ export const Route = createFileRoute("/app/customize")({
   component: CustomizePage,
 });
 
-const tabs = [
-  { value: "theme", label: "Theme" },
-  { value: "sections", label: "Sections" },
-  { value: "chrome", label: "Header & footer" },
-  { value: "copy", label: "Copy" },
-] as const;
+/* ---------- Configuration model (mock) ---------- */
 
+type Placement = "hosted" | "embed" | "agent";
+
+interface SectionOption {
+  choices?: readonly string[];
+  key: string;
+  kind: "number" | "toggle" | "select" | "text";
+  label: string;
+  suffix?: string;
+  value: string | number | boolean;
+}
+
+interface Section {
+  heading: string;
+  id: string;
+  lead: string;
+  name: string;
+  options: SectionOption[];
+  placements: Record<Placement, boolean>;
+  required?: boolean;
+  summary: string;
+  visible: boolean;
+}
+
+const allOn: Record<Placement, boolean> = {
+  agent: true,
+  embed: true,
+  hosted: true,
+};
+
+const initialSections: Section[] = [
+  {
+    heading: "",
+    id: "hero",
+    lead: "",
+    name: "Address & estimate",
+    options: [],
+    placements: allOn,
+    required: true,
+    summary: "Value, range, and home facts",
+    visible: true,
+  },
+  {
+    heading: "How we got to {value}.",
+    id: "value",
+    lead: "Three independent estimates, shown side by side. The headline is the highest of the three.",
+    name: "How we got the number",
+    options: [
+      {
+        choices: ["3", "2", "1"],
+        key: "sources",
+        kind: "select",
+        label: "Sources shown",
+        value: "3",
+      },
+      {
+        key: "condition",
+        kind: "toggle",
+        label: "Show condition control",
+        value: true,
+      },
+      {
+        key: "trend",
+        kind: "toggle",
+        label: "Show value over time",
+        value: true,
+      },
+    ],
+    placements: allOn,
+    summary: "Three sources and 24-month trend",
+    visible: true,
+  },
+  {
+    heading: "Your equity, estimated.",
+    id: "equity",
+    lead: "",
+    name: "Equity",
+    options: [
+      {
+        key: "commission",
+        kind: "number",
+        label: "Selling costs",
+        suffix: "%",
+        value: 6,
+      },
+      {
+        key: "slider",
+        kind: "toggle",
+        label: "Show sale-price slider",
+        value: true,
+      },
+    ],
+    placements: allOn,
+    summary: "Estimated equity and sale-proceeds slider",
+    visible: true,
+  },
+  {
+    heading: "{count} buyers are looking for a home like yours.",
+    id: "buyers",
+    lead: "Active buyers registered with {brokerage} and partner brokerages in the last 30 days.",
+    name: "Buyers looking",
+    options: [
+      {
+        key: "radius",
+        kind: "number",
+        label: "Buyer radius",
+        suffix: "mi",
+        value: 5,
+      },
+      { key: "featured", kind: "number", label: "Featured buyers", value: 3 },
+      {
+        key: "demand",
+        kind: "toggle",
+        label: "Show demand breakdown",
+        value: true,
+      },
+    ],
+    placements: allOn,
+    summary: "Buyer funnel, featured buyers, demand",
+    visible: true,
+  },
+  {
+    heading: "{neighborhood}, the last 12 months.",
+    id: "market",
+    lead: "",
+    name: "Market",
+    options: [
+      {
+        choices: ["12", "24"],
+        key: "months",
+        kind: "select",
+        label: "Months of history",
+        value: "12",
+      },
+      {
+        key: "ppsf",
+        kind: "toggle",
+        label: "Show price per sq ft",
+        value: false,
+      },
+    ],
+    placements: allOn,
+    summary: "Neighborhood stats, sales per month",
+    visible: true,
+  },
+  {
+    heading: "Sold nearby.",
+    id: "comps",
+    lead: "The recent sales that most resemble your home, within half a mile.",
+    name: "Nearby sales",
+    options: [
+      {
+        key: "radius",
+        kind: "number",
+        label: "Radius",
+        suffix: "mi",
+        value: 0.5,
+      },
+      { key: "count", kind: "number", label: "Sales shown", value: 4 },
+      { key: "map", kind: "toggle", label: "Show map", value: true },
+    ],
+    placements: allOn,
+    summary: "Map and comparable sales",
+    visible: true,
+  },
+  {
+    heading: "Home facts.",
+    id: "facts",
+    lead: "From public records. If something's wrong, claim this home to fix it.",
+    name: "Home facts",
+    options: [
+      { key: "rows", kind: "number", label: "Rows before Show all", value: 6 },
+    ],
+    placements: allOn,
+    summary: "Public-record details, claim to edit",
+    visible: true,
+  },
+  {
+    heading: "Watch this home.",
+    id: "updates",
+    lead: "On the first of every month: your updated value, what sold nearby, and buyers who match.",
+    name: "Monthly updates",
+    options: [
+      { key: "name", kind: "toggle", label: "Ask for name", value: true },
+      {
+        key: "preview",
+        kind: "toggle",
+        label: "Show email preview",
+        value: true,
+      },
+    ],
+    placements: allOn,
+    summary: "Watch-this-home signup with email preview",
+    visible: true,
+  },
+  {
+    heading: "Want a precise number? Talk to {agent}.",
+    id: "agent",
+    lead: "",
+    name: "Talk to an agent",
+    options: [
+      {
+        choices: ["Round robin by ZIP", "Office default", "Agent page owner"],
+        key: "assign",
+        kind: "select",
+        label: "Assign leads by",
+        value: "Round robin by ZIP",
+      },
+      {
+        key: "timeline",
+        kind: "toggle",
+        label: "Ask selling timeline",
+        value: true,
+      },
+    ],
+    placements: allOn,
+    required: true,
+    summary: "Agent card and consult form",
+    visible: true,
+  },
+  {
+    heading: "Refinance options from {lender}.",
+    id: "lender",
+    lead: "",
+    name: "Lender co-brand",
+    options: [
+      {
+        key: "lender",
+        kind: "text",
+        label: "Lender",
+        value: "Coastal Lending",
+      },
+      { key: "nmls", kind: "text", label: "NMLS", value: "123456" },
+    ],
+    placements: { agent: false, embed: false, hosted: true },
+    summary: "Refinance options with partner lender",
+    visible: false,
+  },
+  {
+    heading: "",
+    id: "compliance",
+    lead: "",
+    name: "MLS disclaimer",
+    options: [],
+    placements: allOn,
+    required: true,
+    summary: "Required legal text",
+    visible: true,
+  },
+];
+
+const tabs = [
+  { label: "Theme", value: "theme" },
+  { label: "Sections", value: "sections" },
+  { label: "Header & footer", value: "chrome" },
+  { label: "Copy", value: "copy" },
+] as const;
 type Tab = (typeof tabs)[number]["value"];
 
 const devices = [
-  { value: "desktop", label: "Desktop" },
-  { value: "phone", label: "Phone" },
+  { label: "Desktop", value: "desktop" },
+  { label: "Phone", value: "phone" },
+] as const;
+type Device = (typeof devices)[number]["value"];
+
+const placementsList = [
+  { label: "Hosted site", value: "hosted" },
+  { label: "Embed", value: "embed" },
+  { label: "Agent page", value: "agent" },
 ] as const;
 
-type Device = (typeof devices)[number]["value"];
+const languages = [
+  { label: "English", value: "en" },
+  { label: "Español", value: "es" },
+] as const;
+type Language = (typeof languages)[number]["value"];
 
 const chromeModes = [
   {
-    value: "composable",
-    title: "Composable blocks",
     body: "Turn blocks on or off and reorder them. Always on-brand, responsive, and accessible. Recommended.",
+    title: "Composable blocks",
+    value: "composable",
   },
   {
-    value: "html",
-    title: "Custom HTML",
     body: "Paste your own header and footer markup. Sanitized and sandboxed; styles are scoped so they can't break the report.",
+    title: "Custom HTML",
+    value: "html",
   },
   {
-    value: "mirror",
-    title: "Mirror my website",
     body: "Reliance fetches the header and footer from a URL on your site and keeps them in sync. Best for large brokerages with strict brand systems.",
+    title: "Mirror my website",
+    value: "mirror",
   },
 ] as const;
-
 type ChromeMode = (typeof chromeModes)[number]["value"];
 
-const footerBlocks = [
+interface FooterBlock {
+  id: string;
+  label: string;
+  locked?: boolean;
+  on: boolean;
+}
+
+const initialFooter: FooterBlock[] = [
   { id: "brand", label: "Brand and tagline", on: true },
   { id: "links", label: "Explore links", on: true },
   { id: "agent", label: "Local expert card", on: true },
-  { id: "legal", label: "Legal and MLS disclaimer", on: true, locked: true },
+  { id: "legal", label: "Legal and MLS disclaimer", locked: true, on: true },
   { id: "social", label: "Social links", on: false },
-  { id: "powered", label: "Powered by Reliance", on: true, locked: true },
+  { id: "powered", label: "Powered by Reliance", locked: true, on: true },
+];
+
+const typefaces = [
+  {
+    css: "var(--font-sans)",
+    label: "Reliance default (Hanken Grotesk)",
+    value: "reliance",
+  },
+  {
+    css: "system-ui, -apple-system, sans-serif",
+    label: "System font",
+    value: "system",
+  },
+  {
+    css: 'Georgia, "Times New Roman", serif',
+    label: "Brokerage serif (uploaded)",
+    value: "serif",
+  },
+] as const;
+type Typeface = (typeof typefaces)[number]["value"];
+
+const versions = [
+  {
+    by: "Maya Ortiz",
+    id: 12,
+    note: "Hid lender co-brand, raised buyer radius to 5 mi",
+    when: "Tue, 2:14 pm",
+  },
+  { by: "Sam Patel", id: 11, note: "New MLS disclaimer text", when: "Aug 28" },
+  {
+    by: "Maya Ortiz",
+    id: 10,
+    note: "Switched footer to composable blocks",
+    when: "Aug 21",
+  },
+  { by: "Maya Ortiz", id: 9, note: "Brand color and radius", when: "Aug 12" },
 ] as const;
 
+const DEFAULT_BRAND_HEX = "#0f5f6b";
+
+/* ---------- Page ---------- */
+
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: a single mock screen composed of four tabs and a preview; splitting it would only scatter local state
 function CustomizePage() {
   const { tenant, setTenantId } = useTenant();
   const [tab, setTab] = useState<Tab>("theme");
   const [device, setDevice] = useState<Device>("desktop");
-  const [sections, setSections] = useState<SectionConfig[]>(defaultSections);
+  const [placement, setPlacement] = useState<Placement>("hosted");
+  const [sections, setSections] = useState<Section[]>(initialSections);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [chrome, setChrome] = useState<ChromeMode>("composable");
+  const [footer, setFooter] = useState<FooterBlock[]>(initialFooter);
   const [radius, setRadius] = useState<number>(
     Number.parseInt(tenant.theme.radius, 10)
   );
-  const [headline, setHeadline] = useState(
-    "Know what your home is worth. Right now."
+  const [brand, setBrand] = useState<string | null>(null);
+  const [logo, setLogo] = useState<string | null>(null);
+  const [typeface, setTypeface] = useState<Typeface>("reliance");
+  const [language, setLanguage] = useState<Language>("en");
+  const [changes, setChanges] = useState(0);
+  const [lastPublished, setLastPublished] = useState(
+    "Tue, 2:14 pm by Maya Ortiz"
   );
-  const [cta, setCta] = useState("Get my estimate");
+  const [history, setHistory] = useState(false);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [spanish, setSpanish] = useState<Record<string, string>>({});
+  const previewRef = useRef<HTMLDivElement>(null);
 
-  const move = (index: number, dir: -1 | 1) => {
-    setSections((prev) => {
-      const next = [...prev];
-      const target = index + dir;
-      if (target < 0 || target >= next.length) {
-        return prev;
-      }
-      const a = next[index];
-      const b = next[target];
-      if (!(a && b)) {
-        return prev;
-      }
-      next[index] = b;
-      next[target] = a;
-      return next;
-    });
+  const touch = () => setChanges((n) => n + 1);
+
+  const update = (id: string, patch: Partial<Section>) => {
+    setSections((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, ...patch } : s))
+    );
+    touch();
   };
 
-  const toggle = (id: string, visible: boolean) =>
+  const updateOption = (
+    id: string,
+    key: string,
+    value: SectionOption["value"]
+  ) => {
     setSections((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, visible } : s))
+      prev.map((s) =>
+        s.id === id
+          ? {
+              ...s,
+              options: s.options.map((o) =>
+                o.key === key ? { ...o, value } : o
+              ),
+            }
+          : s
+      )
     );
+    touch();
+  };
 
-  const visibleIds = new Set(
-    sections.filter((s) => s.visible).map((s) => s.id)
-  );
+  const move = (from: number, to: number) => {
+    setSections((prev) => {
+      if (to < 0 || to >= prev.length || from === to) {
+        return prev;
+      }
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      if (!item) {
+        return prev;
+      }
+      next.splice(to, 0, item);
+      return next;
+    });
+    touch();
+  };
+
+  const moveFooter = (index: number) => {
+    setFooter((prev) => {
+      const next = [...prev];
+      const [item] = next.splice(index, 1);
+      if (item) {
+        next.splice(index - 1, 0, item);
+      }
+      return next;
+    });
+    touch();
+  };
+
+  const scrollPreviewTo = (id: string) => {
+    const root = previewRef.current;
+    const target = root?.querySelector<HTMLElement>(`[data-section="${id}"]`);
+    if (target) {
+      root?.scrollTo({ behavior: "smooth", top: target.offsetTop - 12 });
+    }
+  };
+
+  const discard = () => {
+    setSections(initialSections);
+    setFooter(initialFooter);
+    setBrand(null);
+    setLogo(null);
+    setTypeface("reliance");
+    setRadius(Number.parseInt(tenant.theme.radius, 10));
+    setSpanish({});
+    setChanges(0);
+  };
+
+  const onLogoFile = (file: File | undefined) => {
+    if (!file) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setLogo(typeof reader.result === "string" ? reader.result : null);
+      touch();
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const selected = sections.find((s) => s.id === selectedId) ?? null;
+  const brandColor = brand ?? tenant.theme.brand;
   const previewVars = {
     ...tenantVars(tenant),
+    "--c-brand": brandColor,
+    "--c-brand-soft": `color-mix(in oklch, ${brandColor} 10%, white)`,
+    "--c-dark": `color-mix(in oklch, ${brandColor} 25%, oklch(0.16 0 0))`,
     "--c-radius": `${radius}px`,
-  } as React.CSSProperties;
+    fontFamily: typefaces.find((t) => t.value === typeface)?.css ?? "inherit",
+  } as CSSProperties;
+
+  const visibleSections = sections.filter(
+    (s) => s.visible && s.placements[placement]
+  );
+  const overridden = Object.values(spanish).filter(
+    (v) => v.trim().length > 0
+  ).length;
+  const placementUrl: Record<Placement, string> = {
+    agent: `${tenant.website}/agents/${tenant.agent.name.split(" ")[0]?.toLowerCase() ?? ""}`,
+    embed: `${tenant.website}/sell-your-home`,
+    hosted: tenant.hostedDomain,
+  };
 
   return (
     <div className="space-y-5">
@@ -131,17 +535,80 @@ function CustomizePage() {
             Changes preview instantly.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="btn btn-ghost btn-sm" type="button">
+        <div className="flex flex-wrap items-center gap-2">
+          {changes > 0 ? (
+            <Pill dot tone="warn">
+              {changes} unpublished {changes === 1 ? "change" : "changes"}
+            </Pill>
+          ) : (
+            <Pill tone="neutral">Up to date</Pill>
+          )}
+          <button
+            className="inline-flex items-center gap-1.5 px-2 text-ink-muted text-sm hover:text-ink"
+            onClick={() => setHistory((v) => !v)}
+            type="button"
+          >
+            <Clock aria-hidden="true" className="size-3.5" />
+            Published {lastPublished}
+          </button>
+          <button
+            className="btn btn-ghost btn-sm"
+            disabled={changes === 0}
+            onClick={discard}
+            type="button"
+          >
             Discard
           </button>
-          <button className="btn btn-brand btn-sm" type="button">
+          <button
+            className="btn btn-brand btn-sm"
+            disabled={changes === 0}
+            onClick={() => {
+              setChanges(0);
+              setLastPublished("just now by Maya Ortiz");
+            }}
+            type="button"
+          >
             Publish changes
           </button>
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[22rem_1fr]">
+      {history ? (
+        <div className="panel p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="c-section">Version history</h2>
+            <span className="c-label">
+              Restoring creates a new version; nothing is lost.
+            </span>
+          </div>
+          <ol className="divide-y divide-line">
+            {versions.map((v, i) => (
+              <li
+                className="flex flex-wrap items-center justify-between gap-3 py-2.5 text-sm"
+                key={v.id}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="tabular w-8 text-ink-muted">v{v.id}</span>
+                  <span className="font-medium">{v.note}</span>
+                  <span className="c-label">
+                    {v.when} · {v.by}
+                  </span>
+                </div>
+                {i === 0 ? (
+                  <Pill tone="good">Live</Pill>
+                ) : (
+                  <button className="btn btn-ghost btn-sm" type="button">
+                    <RotateCcw aria-hidden="true" className="size-3.5" />{" "}
+                    Restore
+                  </button>
+                )}
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : null}
+
+      <div className="grid gap-4 lg:grid-cols-[23rem_1fr]">
         <div className="panel self-start p-4">
           <Segmented
             label="Customize section"
@@ -151,46 +618,56 @@ function CustomizePage() {
             value={tab}
           />
 
-          {tab === "theme" && (
+          {tab === "theme" ? (
             <div className="mt-5 space-y-5">
-              <div>
-                <span className="mb-1.5 block font-medium text-sm">
-                  Brand color
-                </span>
-                <div className="grid grid-cols-3 gap-2">
+              <Field label="Brand color">
+                <div className="flex items-center gap-3">
+                  <input
+                    aria-label="Pick a brand color"
+                    className="size-11 shrink-0 cursor-pointer rounded-[10px] border border-line bg-transparent p-1"
+                    onChange={(e) => {
+                      setBrand(e.target.value);
+                      touch();
+                    }}
+                    type="color"
+                    value={brand ?? DEFAULT_BRAND_HEX}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <ContrastBadge color={brandColor} />
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1.5">
                   {tenantOrder.map((id: TenantId) => {
                     const t = tenants[id];
-                    const selected = tenant.id === id;
+                    const selectedTenant = tenant.id === id && brand === null;
                     return (
                       <button
-                        aria-pressed={selected}
-                        className={`flex items-center gap-2 rounded-[10px] border p-2 text-left text-xs transition-colors ${
-                          selected
+                        aria-pressed={selectedTenant}
+                        className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                          selectedTenant
                             ? "border-ink"
                             : "border-line hover:bg-surface"
                         }`}
                         key={id}
                         onClick={() => {
                           setTenantId(id);
+                          setBrand(null);
                           setRadius(Number.parseInt(t.theme.radius, 10));
+                          touch();
                         }}
                         type="button"
                       >
                         <span
                           aria-hidden="true"
-                          className="size-5 shrink-0 rounded-full"
+                          className="size-2.5 rounded-full"
                           style={{ background: t.theme.brand }}
                         />
-                        <span className="truncate">{t.name}</span>
+                        {t.name}
                       </button>
                     );
                   })}
                 </div>
-                <p className="c-label mt-2">
-                  Presets shown for the demo. Any color works; text contrast is
-                  checked automatically.
-                </p>
-              </div>
+              </Field>
               <Field
                 hint="Applies to buttons, inputs, and cards."
                 label={`Corner radius · ${radius}px`}
@@ -199,67 +676,115 @@ function CustomizePage() {
                   className="mt-1 w-full accent-[var(--c-brand)]"
                   max={24}
                   min={6}
-                  onChange={(e) => setRadius(Number(e.target.value))}
+                  onChange={(e) => {
+                    setRadius(Number(e.target.value));
+                    touch();
+                  }}
                   step={2}
                   type="range"
                   value={radius}
                 />
               </Field>
               <Field
-                hint="SVG or PNG, shown in the header and footer."
+                hint="SVG or PNG. Shown in the header, footer, and the monthly email."
                 label="Logo"
               >
-                <button
-                  className="btn btn-ghost btn-md w-full justify-start"
-                  type="button"
-                >
-                  <Upload aria-hidden="true" className="size-4" />
-                  Upload logo
-                </button>
+                <div className="flex items-center gap-3">
+                  <label className="btn btn-ghost btn-md flex-1 cursor-pointer justify-start">
+                    <Upload aria-hidden="true" className="size-4" />
+                    {logo ? "Replace logo" : "Upload logo"}
+                    <input
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={(e) => onLogoFile(e.target.files?.[0])}
+                      type="file"
+                    />
+                  </label>
+                  {logo ? (
+                    <button
+                      className="text-ink-muted text-sm hover:text-ink"
+                      onClick={() => {
+                        setLogo(null);
+                        touch();
+                      }}
+                      type="button"
+                    >
+                      Remove
+                    </button>
+                  ) : null}
+                </div>
               </Field>
               <Field label="Typeface">
                 <select
                   className="field appearance-none"
-                  defaultValue="reliance"
+                  onChange={(e) => {
+                    setTypeface(e.target.value as Typeface);
+                    touch();
+                  }}
+                  value={typeface}
                 >
-                  <option value="reliance">
-                    Reliance default (Hanken Grotesk)
-                  </option>
-                  <option value="system">System font</option>
-                  <option value="custom">Upload brand font</option>
+                  {typefaces.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
                 </select>
               </Field>
             </div>
-          )}
+          ) : null}
 
-          {tab === "sections" && (
+          {tab === "sections" && selected === null ? (
             <div className="mt-5">
               <p className="c-label mb-3">
-                Reorder and show or hide report sections. Required sections stay
-                on.
+                Drag to reorder. Click a section for its settings. Required
+                sections stay on.
               </p>
               <ol className="space-y-1">
                 {sections.map((s, i) => (
+                  // biome-ignore lint/a11y/noNoninteractiveElementInteractions: drag handlers reorder the list; the arrow buttons provide the keyboard path
                   <li
-                    className="flex items-center gap-2 rounded-[10px] px-1.5 py-1.5 hover:bg-surface"
+                    className={`flex items-center gap-2 rounded-[10px] px-1.5 py-1.5 transition-colors hover:bg-surface ${
+                      dragId === s.id ? "opacity-40" : ""
+                    } ${s.visible ? "" : "text-ink-muted"}`}
+                    draggable={!s.required}
                     key={s.id}
+                    onDragEnd={() => setDragId(null)}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      if (dragId && dragId !== s.id) {
+                        move(
+                          sections.findIndex((x) => x.id === dragId),
+                          i
+                        );
+                      }
+                    }}
+                    onDragStart={() => setDragId(s.id)}
                   >
                     <GripVertical
                       aria-hidden="true"
-                      className="size-4 shrink-0 text-ink-muted"
+                      className={`size-4 shrink-0 ${s.required ? "opacity-30" : "cursor-grab text-ink-muted"}`}
                     />
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate font-medium text-sm">
+                    <button
+                      className="min-w-0 flex-1 text-left"
+                      onClick={() => {
+                        setSelectedId(s.id);
+                        scrollPreviewTo(s.id);
+                      }}
+                      type="button"
+                    >
+                      <span className="block truncate font-medium text-sm">
                         {s.name}
-                      </div>
-                      <div className="c-label truncate">{s.summary}</div>
-                    </div>
+                      </span>
+                      <span className="c-label block truncate">
+                        {s.summary}
+                      </span>
+                    </button>
                     <div className="flex flex-col">
                       <button
                         aria-label={`Move ${s.name} up`}
                         className="rounded p-0.5 text-ink-muted hover:text-ink disabled:opacity-30"
                         disabled={i === 0}
-                        onClick={() => move(i, -1)}
+                        onClick={() => move(i, i - 1)}
                         type="button"
                       >
                         <ChevronUp aria-hidden="true" className="size-3.5" />
@@ -268,7 +793,7 @@ function CustomizePage() {
                         aria-label={`Move ${s.name} down`}
                         className="rounded p-0.5 text-ink-muted hover:text-ink disabled:opacity-30"
                         disabled={i === sections.length - 1}
-                        onClick={() => move(i, 1)}
+                        onClick={() => move(i, i + 1)}
                         type="button"
                       >
                         <ChevronDown aria-hidden="true" className="size-3.5" />
@@ -285,22 +810,28 @@ function CustomizePage() {
                       <Switch
                         checked={s.visible}
                         label={`Show ${s.name}`}
-                        onChange={(v) => toggle(s.id, v)}
+                        onChange={(v) => update(s.id, { visible: v })}
                       />
                     )}
                   </li>
                 ))}
               </ol>
             </div>
-          )}
+          ) : null}
 
-          {tab === "chrome" && (
+          {tab === "sections" && selected ? (
+            <SectionInspector
+              onBack={() => setSelectedId(null)}
+              onOption={(key, v) => updateOption(selected.id, key, v)}
+              onPatch={(patch) => update(selected.id, patch)}
+              section={selected}
+            />
+          ) : null}
+
+          {tab === "chrome" ? (
             <div className="mt-5 space-y-4">
-              <div
-                aria-label="Header and footer mode"
-                className="space-y-2"
-                role="radiogroup"
-              >
+              <fieldset className="space-y-2">
+                <legend className="sr-only">Header and footer mode</legend>
                 {chromeModes.map((m) => (
                   <label
                     className={`block cursor-pointer rounded-[12px] border p-3 transition-colors ${
@@ -315,7 +846,10 @@ function CustomizePage() {
                         checked={chrome === m.value}
                         className="accent-[var(--c-brand)]"
                         name="chrome"
-                        onChange={() => setChrome(m.value)}
+                        onChange={() => {
+                          setChrome(m.value);
+                          touch();
+                        }}
                         type="radio"
                       />
                       <span className="font-medium text-sm">{m.title}</span>
@@ -323,130 +857,226 @@ function CustomizePage() {
                     <span className="c-label mt-1 block pl-5">{m.body}</span>
                   </label>
                 ))}
-              </div>
-              {chrome === "composable" && (
+              </fieldset>
+              {chrome === "composable" ? (
                 <div>
                   <span className="mb-1.5 block font-medium text-sm">
                     Footer blocks
                   </span>
+                  <p className="c-label mb-2">
+                    In the order they appear. Locked blocks are required.
+                  </p>
                   <ul className="divide-y divide-line">
-                    {footerBlocks.map((b) => (
+                    {footer.map((b, i) => (
                       <li
-                        className="flex items-center justify-between py-2 text-sm"
+                        className="flex items-center gap-2 py-2 text-sm"
                         key={b.id}
                       >
-                        <span>{b.label}</span>
-                        {"locked" in b && b.locked ? (
+                        <span className="flex-1">{b.label}</span>
+                        <button
+                          aria-label={`Move ${b.label} up`}
+                          className="rounded p-0.5 text-ink-muted hover:text-ink disabled:opacity-30"
+                          disabled={i === 0}
+                          onClick={() => moveFooter(i)}
+                          type="button"
+                        >
+                          <ChevronUp aria-hidden="true" className="size-3.5" />
+                        </button>
+                        {b.locked ? (
                           <Lock
                             aria-hidden="true"
-                            className="size-4 text-ink-muted"
+                            className="ml-2 size-4 text-ink-muted"
                           />
                         ) : (
                           <Switch
                             checked={b.on}
                             label={b.label}
-                            onChange={() => undefined}
+                            onChange={(v) => {
+                              setFooter((prev) =>
+                                prev.map((x) =>
+                                  x.id === b.id ? { ...x, on: v } : x
+                                )
+                              );
+                              touch();
+                            }}
                           />
                         )}
                       </li>
                     ))}
                   </ul>
                 </div>
-              )}
-              {chrome === "html" && (
-                <Field
-                  hint="Scripts are stripped; styles are scoped to your block."
-                  label="Footer HTML"
-                >
-                  <textarea
-                    className="field h-32 resize-none py-2 font-mono text-xs"
-                    defaultValue={"<footer>\n  ...\n</footer>"}
-                  />
-                </Field>
-              )}
-              {chrome === "mirror" && (
-                <Field
-                  hint="We read the header and footer regions from this page nightly."
-                  label="Source page"
-                >
-                  <input
-                    className="field"
-                    defaultValue={`https://${tenant.website}/`}
-                    type="url"
-                  />
-                </Field>
-              )}
+              ) : null}
+              {chrome === "html" ? (
+                <div className="space-y-3">
+                  <Field
+                    hint="Scripts are stripped; styles are scoped to your block."
+                    label="Footer HTML"
+                  >
+                    <textarea
+                      className="field h-32 resize-none py-2 font-mono text-xs"
+                      defaultValue={
+                        '<footer class="hv-footer">\n  <img src="/logo.svg" alt="Harbor & Vale">\n  <nav>…</nav>\n  <script src="/track.js"></script>\n</footer>'
+                      }
+                      onChange={touch}
+                    />
+                  </Field>
+                  <div className="rounded-[10px] bg-surface px-3 py-2.5 text-sm">
+                    <div className="font-medium">Sanitized on save</div>
+                    <ul className="c-label mt-1 list-disc pl-4">
+                      <li>Removed 1 script tag</li>
+                      <li>Scoped 3 style rules to the footer</li>
+                      <li>Kept 1 image and 1 nav</li>
+                    </ul>
+                  </div>
+                </div>
+              ) : null}
+              {chrome === "mirror" ? (
+                <div className="space-y-3">
+                  <Field
+                    hint="We read the header and footer regions from this page nightly."
+                    label="Source page"
+                  >
+                    <input
+                      className="field"
+                      defaultValue={`https://${tenant.website}/`}
+                      onChange={touch}
+                      type="url"
+                    />
+                  </Field>
+                  <div className="flex items-center justify-between rounded-[10px] bg-surface px-3 py-2.5 text-sm">
+                    <div>
+                      <div className="font-medium">Fetched 2 hours ago</div>
+                      <div className="c-label">
+                        Header and footer found · 14 links · fallback set to
+                        composable
+                      </div>
+                    </div>
+                    <Pill dot tone="good">
+                      In sync
+                    </Pill>
+                  </div>
+                </div>
+              ) : null}
             </div>
-          )}
+          ) : null}
 
-          {tab === "copy" && (
+          {tab === "copy" ? (
             <div className="mt-5 space-y-4">
-              <Field label="Search headline">
-                <input
-                  className="field"
-                  onChange={(e) => setHeadline(e.target.value)}
-                  type="text"
-                  value={headline}
+              <div className="flex items-center justify-between gap-3">
+                <Segmented
+                  label="Language"
+                  onChange={setLanguage}
+                  options={languages}
+                  value={language}
                 />
-              </Field>
-              <Field label="Search button">
-                <input
-                  className="field"
-                  onChange={(e) => setCta(e.target.value)}
-                  type="text"
-                  value={cta}
-                />
-              </Field>
-              <Field
-                hint="Shown under the value on every report."
-                label="Estimate disclaimer"
-              >
-                <textarea
-                  className="field h-24 resize-none py-2 text-sm"
-                  defaultValue={tenant.mlsDisclaimer}
-                />
-              </Field>
+                {language === "es" ? (
+                  <span className="c-label">{overridden} translated</span>
+                ) : null}
+              </div>
               <p className="c-label">
-                Every section heading and call to action is editable the same
-                way. Spanish translations can be added per field.
+                {language === "en"
+                  ? "English copy is edited per section. Open a section under Sections to change its heading and lead."
+                  : "Leave a field empty to fall back to English. Reports pick the language from the visitor's browser or a ?lang= link."}
               </p>
+              <div className="max-h-[32rem] space-y-4 overflow-y-auto pr-1">
+                {sections
+                  .filter((s) => s.heading)
+                  .map((s) => (
+                    <div key={s.id}>
+                      <div className="mb-1.5 font-medium text-sm">{s.name}</div>
+                      {language === "en" ? (
+                        <div className="rounded-[10px] bg-surface px-3 py-2 text-sm">
+                          <div>{s.heading}</div>
+                          {s.lead ? (
+                            <div className="c-label mt-1">{s.lead}</div>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <input
+                            className="field text-sm"
+                            onChange={(e) => {
+                              setSpanish((prev) => ({
+                                ...prev,
+                                [`${s.id}.heading`]: e.target.value,
+                              }));
+                              touch();
+                            }}
+                            placeholder={s.heading}
+                            type="text"
+                            value={spanish[`${s.id}.heading`] ?? ""}
+                          />
+                          {s.lead ? (
+                            <input
+                              className="field text-sm"
+                              onChange={(e) => {
+                                setSpanish((prev) => ({
+                                  ...prev,
+                                  [`${s.id}.lead`]: e.target.value,
+                                }));
+                                touch();
+                              }}
+                              placeholder={s.lead}
+                              type="text"
+                              value={spanish[`${s.id}.lead`] ?? ""}
+                            />
+                          ) : null}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+              </div>
             </div>
-          )}
+          ) : null}
         </div>
 
         <div className="panel flex min-w-0 flex-col p-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div className="c-label">
-              Preview · <span className="text-ink">{tenant.hostedDomain}</span>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Segmented
+                label="Preview as"
+                onChange={setPlacement}
+                options={placementsList}
+                value={placement}
+              />
+              <span className="c-label hidden xl:inline">
+                {placementUrl[placement]}
+              </span>
             </div>
             <div className="flex items-center gap-2">
-              <Monitor aria-hidden="true" className="size-4 text-ink-muted" />
               <Segmented
                 label="Preview device"
                 onChange={setDevice}
                 options={devices}
                 value={device}
               />
-              <Smartphone
-                aria-hidden="true"
-                className="size-4 text-ink-muted"
-              />
+              <Link
+                className="btn btn-ghost btn-sm"
+                target="_blank"
+                to="/home-report/2148-bayshore-lane"
+              >
+                Open full report{" "}
+                <ExternalLink aria-hidden="true" className="size-3.5" />
+              </Link>
             </div>
           </div>
           <div className="flex flex-1 justify-center overflow-hidden rounded-[12px] bg-surface p-4">
             <div
-              className="home-report overflow-hidden rounded-[12px] bg-canvas text-ink shadow-frame transition-[width] duration-300"
+              className="h-[46rem] overflow-y-auto rounded-[12px] shadow-frame transition-[width] duration-300"
+              ref={previewRef}
               style={{
-                ...previewVars,
                 width: device === "phone" ? 390 : "100%",
-                zoom: device === "phone" ? 0.9 : 0.62,
+                zoom: device === "phone" ? 0.9 : 0.6,
               }}
             >
-              <MiniReport
-                cta={cta}
-                device={device}
-                headline={headline}
-                visible={visibleIds}
+              <ReportPreview
+                footer={footer}
+                logo={logo}
+                phone={device === "phone"}
+                placement={placement}
+                sections={visibleSections}
+                selectedId={selectedId}
+                vars={previewVars}
               />
             </div>
           </div>
@@ -456,118 +1086,778 @@ function CustomizePage() {
   );
 }
 
-function MiniReport({
-  visible,
-  device,
-  headline,
-  cta,
-}: {
-  visible: Set<string>;
-  device: Device;
-  headline: string;
-  cta: string;
-}) {
-  const { tenant } = useTenant();
-  const phone = device === "phone";
-  const { estimate } = property;
-  const equityValue = estimate.value - property.equity.mortgageBalance;
+/* ---------- Editors ---------- */
 
+function ContrastBadge({ color }: { color: string }) {
+  const [ratio, setRatio] = useState<number | null>(null);
+  useEffect(() => {
+    setRatio(contrastRatio("white", color));
+  }, [color]);
+  if (ratio === null) {
+    return <span className="c-label">Checking contrast…</span>;
+  }
+  const ok = ratio >= 4.5;
   return (
-    <div>
-      <div className="flex items-center justify-between px-6 py-4">
-        <TenantLogo size="sm" />
-        <span className="btn btn-ghost btn-sm rounded-full">
-          Talk to an agent
-        </span>
+    <div className="text-sm">
+      <div className="flex items-center gap-2">
+        <span className="tabular font-medium">{ratio.toFixed(1)}:1</span>
+        <Pill tone={ok ? "good" : "warn"}>
+          {ok ? "White text passes AA" : "Too light for white text"}
+        </Pill>
       </div>
-      <div
-        className={`px-6 pt-6 pb-10 ${phone ? "" : "grid grid-cols-[1.1fr_1fr] items-center gap-8"}`}
+      <div className="c-label mt-0.5">
+        {ok
+          ? "Buttons and the monthly-update section use white text."
+          : "We'll darken it for buttons until it passes."}
+      </div>
+    </div>
+  );
+}
+
+function SectionInspector({
+  section,
+  onBack,
+  onPatch,
+  onOption,
+}: {
+  section: Section;
+  onBack: () => void;
+  onPatch: (patch: Partial<Section>) => void;
+  onOption: (key: string, value: SectionOption["value"]) => void;
+}) {
+  const defaults = initialSections.find((s) => s.id === section.id);
+  return (
+    <div className="mt-5">
+      <button
+        className="inline-flex items-center gap-1.5 text-ink-muted text-sm hover:text-ink"
+        onClick={onBack}
+        type="button"
       >
+        <ArrowLeft aria-hidden="true" className="size-3.5" /> All sections
+      </button>
+      <div className="mt-3 flex items-start justify-between gap-3">
         <div>
-          <h2 className="t-h2">{property.line1}</h2>
-          <p className="text-ink-muted">{property.line2}</p>
-          <div className="mt-6 text-ink-muted">Estimated value</div>
-          <div className="t-figure-sm mt-1">{fmtMoney(estimate.value)}</div>
-          <div className="mt-4 max-w-sm">
-            <ValueGauge
-              high={estimate.high}
-              low={estimate.low}
-              value={estimate.value}
-            />
-          </div>
-          <div className="mt-6 flex flex-wrap gap-2">
-            <span className="btn btn-brand btn-pill">{cta}</span>
-            <span className="btn btn-ghost btn-pill">Claim this home</span>
-          </div>
+          <h2 className="c-section">{section.name}</h2>
+          <p className="c-label">{section.summary}</p>
         </div>
-        {!phone && (
-          <img
-            alt=""
-            className="aspect-[4/3] w-full rounded-3xl object-cover"
-            height={1200}
-            src={property.photo}
-            width={1600}
+        {section.required ? (
+          <Pill tone="neutral">Required</Pill>
+        ) : (
+          <Switch
+            checked={section.visible}
+            label={`Show ${section.name}`}
+            onChange={(v) => onPatch({ visible: v })}
           />
         )}
       </div>
-      <div className="border-line border-y px-6 py-2.5">
-        <ul className="flex gap-1 overflow-hidden">
-          {[
-            ["value", "Value"],
-            ["equity", "Equity"],
-            ["buyers", "Buyers"],
-            ["market", "Market"],
-            ["comps", "Nearby sales"],
-            ["facts", "Home facts"],
-          ]
-            .filter(([id]) => visible.has(id ?? ""))
-            .map(([id, label], i) => (
-              <li
-                className={`h-8 shrink-0 rounded-full px-3 text-sm leading-8 ${i === 0 ? "bg-ink text-canvas" : "text-ink-muted"}`}
-                key={id}
-              >
-                {label}
-              </li>
-            ))}
-        </ul>
-      </div>
-      {visible.has("value") && (
-        <div className="px-6 py-10">
-          <h3 className="t-h3">How we got to {fmtMoney(estimate.value)}.</h3>
-          <p className="mt-2 max-w-md text-ink-muted">
-            Three independent methods, shown side by side.
-          </p>
-        </div>
-      )}
-      {visible.has("equity") && (
-        <div className="bg-dark px-6 py-10 text-canvas">
-          <h3 className="t-h3">Your equity, estimated.</h3>
-          <div className="t-figure-sm mt-3">{fmtMoney(equityValue)}</div>
-        </div>
-      )}
-      {visible.has("buyers") && (
-        <div className="px-6 py-10">
-          <h3 className="t-h3">
-            {property.buyers.matched} buyers are looking for a home like yours.
-          </h3>
-        </div>
-      )}
-      {visible.has("lender") && (
-        <div className="bg-surface px-6 py-8">
-          <h3 className="t-h3">Refinance options from Coastal Lending</h3>
-          <p className="mt-1 text-ink-muted text-sm">
-            Lender co-brand block · NMLS 123456
-          </p>
-        </div>
-      )}
-      <div className="border-line border-t px-6 py-6 text-ink-muted text-xs">
-        <div className="mb-2 font-medium text-ink text-sm">
-          {tenant.legalName}
-        </div>
-        <p className="max-w-lg">{tenant.mlsDisclaimer}</p>
-        <p className="mt-3 text-ink">
-          Search page headline: <span className="italic">“{headline}”</span>
+
+      {section.required ? (
+        <p className="mt-3 rounded-[10px] bg-surface px-3 py-2 text-ink-muted text-sm">
+          {section.id === "compliance"
+            ? "Your MLS requires this text on every report. Edit the wording in Settings."
+            : "Every report needs this section. You can change its copy and settings."}
         </p>
+      ) : null}
+
+      <h3 className="c-label mt-5 mb-2 font-medium">Show on</h3>
+      <div className="flex flex-wrap gap-1.5">
+        {placementsList.map((p) => {
+          const on = section.placements[p.value];
+          return (
+            <button
+              aria-pressed={on}
+              className={`inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors ${
+                on
+                  ? "border-ink bg-ink text-canvas"
+                  : "border-line text-ink-muted hover:bg-surface"
+              }`}
+              disabled={section.required}
+              key={p.value}
+              onClick={() =>
+                onPatch({
+                  placements: { ...section.placements, [p.value]: !on },
+                })
+              }
+              type="button"
+            >
+              {on ? <Check aria-hidden="true" className="size-3" /> : null}
+              {p.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {section.options.length > 0 ? (
+        <>
+          <h3 className="c-label mt-5 mb-2 font-medium">Settings</h3>
+          <div className="divide-y divide-line">
+            {section.options.map((o) => (
+              <OptionRow
+                key={o.key}
+                onChange={(v) => onOption(o.key, v)}
+                option={o}
+              />
+            ))}
+          </div>
+        </>
+      ) : null}
+
+      {section.heading ? (
+        <>
+          <h3 className="c-label mt-5 mb-2 font-medium">Copy</h3>
+          <CopyField
+            defaultValue={defaults?.heading ?? ""}
+            label="Heading"
+            onChange={(v) => onPatch({ heading: v })}
+            value={section.heading}
+          />
+          {defaults?.lead ? (
+            <CopyField
+              defaultValue={defaults.lead}
+              label="Lead"
+              multiline
+              onChange={(v) => onPatch({ lead: v })}
+              value={section.lead}
+            />
+          ) : null}
+          <p className="c-label mt-2">
+            Tokens like {"{value}"}, {"{count}"}, and {"{agent}"} fill in per
+            report.
+          </p>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function OptionRow({
+  option,
+  onChange,
+}: {
+  option: SectionOption;
+  onChange: (v: SectionOption["value"]) => void;
+}) {
+  if (option.kind === "toggle") {
+    return (
+      <div className="flex items-center justify-between py-2 text-sm">
+        <span>{option.label}</span>
+        <Switch
+          checked={option.value === true}
+          label={option.label}
+          onChange={onChange}
+        />
+      </div>
+    );
+  }
+  if (option.kind === "select") {
+    return (
+      <label className="flex items-center justify-between gap-3 py-2 text-sm">
+        <span>{option.label}</span>
+        <select
+          className="field h-8 w-auto max-w-[11rem] appearance-none text-sm"
+          onChange={(e) => onChange(e.target.value)}
+          value={String(option.value)}
+        >
+          {option.choices?.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+  const numeric = option.kind === "number";
+  return (
+    <label className="flex items-center justify-between gap-3 py-2 text-sm">
+      <span>{option.label}</span>
+      <span className="flex items-center gap-1.5">
+        <input
+          className={`field h-8 text-sm ${numeric ? "w-20 text-right" : "w-40"}`}
+          inputMode={numeric ? "decimal" : undefined}
+          onChange={(e) =>
+            onChange(numeric ? Number(e.target.value) : e.target.value)
+          }
+          type={numeric ? "number" : "text"}
+          value={String(option.value)}
+        />
+        {option.suffix ? (
+          <span className="c-label">{option.suffix}</span>
+        ) : null}
+      </span>
+    </label>
+  );
+}
+
+function CopyField({
+  label,
+  value,
+  defaultValue,
+  onChange,
+  multiline = false,
+}: {
+  label: string;
+  value: string;
+  defaultValue: string;
+  onChange: (v: string) => void;
+  multiline?: boolean;
+}) {
+  const changed = value !== defaultValue;
+  return (
+    // biome-ignore lint/a11y/noLabelWithoutControl: the input or textarea is rendered inside this label below
+    <label className="mb-3 block">
+      <span className="mb-1.5 flex items-center justify-between text-sm">
+        <span className="font-medium">{label}</span>
+        {changed ? (
+          <button
+            className="c-label inline-flex items-center gap-1 hover:text-ink"
+            onClick={() => onChange(defaultValue)}
+            type="button"
+          >
+            <RotateCcw aria-hidden="true" className="size-3" /> Reset
+          </button>
+        ) : null}
+      </span>
+      {multiline ? (
+        <textarea
+          className="field h-20 resize-none py-2 text-sm"
+          onChange={(e) => onChange(e.target.value)}
+          value={value}
+        />
+      ) : (
+        <input
+          className="field text-sm"
+          onChange={(e) => onChange(e.target.value)}
+          type="text"
+          value={value}
+        />
+      )}
+    </label>
+  );
+}
+
+/* ---------- Live preview ---------- */
+
+interface ReportPreviewProps {
+  footer: FooterBlock[];
+  logo: string | null;
+  phone: boolean;
+  placement: Placement;
+  sections: Section[];
+  selectedId: string | null;
+  vars: CSSProperties;
+}
+
+const factRows = [
+  ["Type", property.facts.type],
+  ["Bedrooms", String(property.facts.beds)],
+  ["Bathrooms", String(property.facts.baths)],
+  ["Living area", `${fmtNum(property.facts.sqft)} sq ft`],
+  ["Lot", `${fmtNum(property.facts.lotSqft)} sq ft`],
+  ["Year built", String(property.facts.yearBuilt)],
+  ["Stories", String(property.facts.stories)],
+  ["Garage", property.facts.garage],
+] as const;
+
+const timelines = [
+  "Within 3 months",
+  "3 to 6 months",
+  "6 to 12 months",
+  "Just curious",
+] as const;
+
+function ReportPreview({
+  sections,
+  placement,
+  footer,
+  logo,
+  selectedId,
+  vars,
+  phone,
+}: ReportPreviewProps) {
+  const { tenant } = useTenant();
+  const { estimate, buyers, market, comps } = property;
+  const equityValue = estimate.value - property.equity.mortgageBalance;
+  const firstName = tenant.agent.name.split(" ")[0] ?? "";
+
+  const opt = (id: string, key: string): SectionOption["value"] | undefined =>
+    sections.find((s) => s.id === id)?.options.find((o) => o.key === key)
+      ?.value;
+  const num = (id: string, key: string, fallback: number): number => {
+    const v = opt(id, key);
+    return typeof v === "number" ? v : Number(v ?? fallback);
+  };
+  const text = (s: Section, field: "heading" | "lead") =>
+    s[field]
+      .replace("{value}", fmtMoney(estimate.value))
+      .replace("{count}", String(buyers.matched))
+      .replace("{brokerage}", tenant.name)
+      .replace("{neighborhood}", property.neighborhood)
+      .replace("{agent}", firstName)
+      .replace("{lender}", String(opt("lender", "lender") ?? "your lender"));
+
+  const commission = num("equity", "commission", 6);
+  const proceeds =
+    estimate.value -
+    Math.round(estimate.value * (commission / 100)) -
+    property.equity.mortgageBalance;
+  const showPpsf = opt("market", "ppsf") === true;
+  const brandMark = logo ? (
+    <img
+      alt={tenant.name}
+      className="h-7 w-auto"
+      height={28}
+      src={logo}
+      width={96}
+    />
+  ) : (
+    <TenantLogo size="sm" />
+  );
+  const frame = (id: string) =>
+    selectedId === id ? "shadow-[inset_0_0_0_3px_var(--c-brand)]" : "";
+
+  const body = (
+    <div className="home-report @container bg-canvas text-ink" style={vars}>
+      {placement === "embed" ? null : (
+        <div className="flex items-center justify-between px-8 py-4">
+          <div className="flex items-center gap-3">
+            {brandMark}
+            {placement === "agent" ? (
+              <span className="flex items-center gap-2 border-line border-l pl-3 text-sm">
+                <img
+                  alt=""
+                  className="size-7 rounded-full object-cover"
+                  height={28}
+                  src={tenant.agent.photo}
+                  width={28}
+                />
+                {tenant.agent.name}
+              </span>
+            ) : null}
+          </div>
+          <span className="btn btn-ghost btn-sm rounded-full">
+            Talk to {placement === "agent" ? firstName : "an agent"}
+          </span>
+        </div>
+      )}
+
+      {/* biome-ignore lint/complexity/noExcessiveCognitiveComplexity: one renderer per report section, kept together so the preview reads top to bottom */}
+      {sections.map((s) => (
+        <div
+          className={`transition-shadow ${frame(s.id)}`}
+          data-section={s.id}
+          key={s.id}
+        >
+          {s.id === "hero" ? (
+            <div
+              className={`grid items-center gap-8 px-8 pt-6 pb-10 ${phone ? "grid-cols-1" : "grid-cols-[1.1fr_1fr]"}`}
+            >
+              <div>
+                <h2 className="t-h2">{property.line1}</h2>
+                <p className="text-ink-muted">{property.line2}</p>
+                <div className="mt-6 text-ink-muted">Estimated value</div>
+                <div
+                  className={`tabular mt-1 font-light tracking-[-0.025em] ${phone ? "text-[2.75rem] leading-none" : "t-figure-sm"}`}
+                >
+                  {fmtMoney(estimate.value)}
+                </div>
+                <div className="mt-4 max-w-sm">
+                  <ValueGauge
+                    high={estimate.high}
+                    low={estimate.low}
+                    value={estimate.value}
+                  />
+                </div>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <span className="btn btn-brand btn-pill">
+                    Talk to {firstName}
+                  </span>
+                  <span className="btn btn-ghost btn-pill">
+                    Claim this home
+                  </span>
+                </div>
+              </div>
+              <img
+                alt=""
+                className="aspect-[4/3] w-full rounded-3xl object-cover"
+                height={1200}
+                src={property.photo}
+                width={1600}
+              />
+            </div>
+          ) : null}
+
+          {s.id === "value" ? (
+            <div className="px-8 py-12">
+              <h3 className="t-h2 max-w-[20ch]">{text(s, "heading")}</h3>
+              <p className="t-lead mt-3 max-w-[60ch] text-ink-muted">
+                {text(s, "lead")}
+              </p>
+              <div
+                className={`mt-8 grid gap-8 ${phone ? "grid-cols-1" : "grid-cols-3"}`}
+              >
+                {property.sources
+                  .slice(0, num("value", "sources", 3))
+                  .map((src) => (
+                    <div className="border-line border-t pt-4" key={src.id}>
+                      <div className="text-ink-muted text-sm">{src.kicker}</div>
+                      <img
+                        alt={src.name}
+                        className="mt-2 h-8 w-auto mix-blend-multiply"
+                        height={32}
+                        src={src.logo}
+                        width={100}
+                      />
+                      <div className="t-figure-sm tabular mt-4">
+                        {fmtMoney(src.value)}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+              {opt("value", "condition") === true ? (
+                <div className="mt-10 rounded-3xl bg-surface p-7">
+                  <SellForPanel sources={property.sources} />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {s.id === "equity" ? (
+            <div
+              className={`grid gap-10 bg-dark px-8 py-12 text-canvas ${phone ? "grid-cols-1" : "grid-cols-2"}`}
+            >
+              <div>
+                <h3 className="t-h2">{text(s, "heading")}</h3>
+                <div className="t-figure-sm mt-6">{fmtMoney(equityValue)}</div>
+                <p className="mt-3 text-canvas/70 text-sm">
+                  After {commission}% selling costs, you'd walk away with about{" "}
+                  {fmtMoney(proceeds, true)}.
+                </p>
+              </div>
+              {opt("equity", "slider") === true ? (
+                <div className="rounded-3xl bg-canvas/8 p-6">
+                  <div className="t-h3">If you sold today</div>
+                  <div className="mt-6 h-2 rounded-full bg-canvas/25">
+                    <div className="h-2 w-1/2 rounded-full bg-brand-ink/70" />
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {s.id === "buyers" ? (
+            <div className="px-8 py-12">
+              <h3 className="t-h2 max-w-[20ch]">{text(s, "heading")}</h3>
+              <p className="t-lead mt-3 max-w-[60ch] text-ink-muted">
+                {text(s, "lead")}
+              </p>
+              <div
+                className={`mt-8 grid gap-10 ${phone ? "grid-cols-1" : "grid-cols-[1fr_1.2fr]"}`}
+              >
+                <HBars emphasizeLast rows={buyers.funnel} share />
+                <ul className="divide-y divide-line border-line border-y">
+                  {buyers.featured
+                    .slice(0, num("buyers", "featured", 3))
+                    .map((b) => (
+                      <li
+                        className="flex items-center gap-3 py-3"
+                        key={b.initials}
+                      >
+                        <span className="flex size-9 items-center justify-center rounded-full bg-brand-soft font-semibold text-brand text-xs">
+                          {b.initials}
+                        </span>
+                        <div className="text-sm">
+                          <div className="font-medium">{b.from}</div>
+                          <div className="text-ink-muted">{b.budget}</div>
+                        </div>
+                      </li>
+                    ))}
+                </ul>
+              </div>
+              {opt("buyers", "demand") === true ? (
+                <div
+                  className={`mt-10 grid gap-8 ${phone ? "grid-cols-1" : "grid-cols-3"}`}
+                >
+                  <div className="border-line border-t pt-4">
+                    <HBars dense emphasizeMatch rows={buyers.demand.price} />
+                  </div>
+                  <div className="border-line border-t pt-4">
+                    <HBars dense emphasizeMatch rows={buyers.demand.beds} />
+                  </div>
+                  <div className="border-line border-t pt-4">
+                    <HBars dense emphasizeMatch rows={buyers.demand.area} />
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {s.id === "market" ? (
+            <div className="bg-surface px-8 py-12">
+              <h3 className="t-h2">{text(s, "heading")}</h3>
+              <div
+                className={`mt-8 grid gap-6 border-line border-t pt-6 ${phone ? "grid-cols-2" : "grid-cols-6"}`}
+              >
+                {[
+                  ["Median sale price", fmtMoney(market.medianSale, true)],
+                  ["Homes sold", fmtNum(market.sold12mo)],
+                  ["For sale now", fmtNum(market.active)],
+                  ["Months of supply", market.monthsSupply.toFixed(1)],
+                  ["Days on market", fmtNum(market.daysOnMarket)],
+                  showPpsf
+                    ? ["Price per sq ft", "$486"]
+                    : ["Sale to list", `${market.saleToList}%`],
+                ].map(([label, value]) => (
+                  <div key={label}>
+                    <div className="text-ink-muted text-sm">{label}</div>
+                    <div className="tabular mt-1 font-semibold text-2xl">
+                      {value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-8 rounded-2xl bg-canvas p-5">
+                <ColumnChart
+                  data={market.monthlySales}
+                  labels={months12}
+                  title="Homes sold per month"
+                />
+              </div>
+            </div>
+          ) : null}
+
+          {s.id === "comps" ? (
+            <div className="px-8 py-12">
+              <h3 className="t-h2">{text(s, "heading")}</h3>
+              <p className="t-lead mt-3 max-w-[60ch] text-ink-muted">
+                {text(s, "lead").replace(
+                  "half a mile",
+                  `${num("comps", "radius", 0.5)} miles`
+                )}
+              </p>
+              <div
+                className={`mt-8 grid gap-8 ${opt("comps", "map") === true && !phone ? "grid-cols-[1.1fr_1fr]" : ""}`}
+              >
+                {opt("comps", "map") === true ? (
+                  <CompsMap
+                    active={null}
+                    comps={comps}
+                    onSelect={() => undefined}
+                    subjectLabel={property.line1}
+                  />
+                ) : null}
+                <ol className="divide-y divide-line border-line border-y">
+                  {comps.slice(0, num("comps", "count", 4)).map((c) => (
+                    <li
+                      className="flex items-center gap-3 py-3"
+                      key={c.address}
+                    >
+                      <img
+                        alt=""
+                        className="size-12 rounded-xl object-cover"
+                        height={48}
+                        src={c.photo}
+                        width={48}
+                      />
+                      <div className="flex-1 text-sm">
+                        <div className="font-medium">{c.address}</div>
+                        <div className="text-ink-muted">
+                          {c.beds} bd · {c.baths} ba · {c.distance} mi
+                        </div>
+                      </div>
+                      <div className="tabular font-semibold">
+                        {fmtMoney(c.price)}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+          ) : null}
+
+          {s.id === "facts" ? (
+            <div className="px-8 py-12">
+              <h3 className="t-h2">{text(s, "heading")}</h3>
+              <dl className="mt-6 max-w-lg divide-y divide-line border-line border-y">
+                {factRows.slice(0, num("facts", "rows", 6)).map(([k, v]) => (
+                  <div className="flex justify-between py-2 text-sm" key={k}>
+                    <dt className="text-ink-muted">{k}</dt>
+                    <dd>{v}</dd>
+                  </div>
+                ))}
+              </dl>
+              <span className="btn btn-ghost btn-md mt-4 rounded-full">
+                Show all 13 facts
+              </span>
+            </div>
+          ) : null}
+
+          {s.id === "updates" ? (
+            <div className="bg-brand">
+              <WatchHome
+                addressLine1={property.line1}
+                addressLine2={property.line2}
+                daysOnMarket={market.daysOnMarket}
+                monthDelta={6000}
+                newBuyers={3}
+                newSales={2}
+                value={estimate.value}
+              />
+            </div>
+          ) : null}
+
+          {s.id === "agent" ? (
+            <div
+              className={`grid gap-10 px-8 py-12 ${phone ? "grid-cols-1" : "grid-cols-[1fr_1.2fr]"}`}
+            >
+              <div>
+                <img
+                  alt=""
+                  className="size-16 rounded-full object-cover"
+                  height={64}
+                  src={tenant.agent.photo}
+                  width={64}
+                />
+                <h3 className="t-h2 mt-5">{text(s, "heading")}</h3>
+                <p className="mt-3 text-ink-muted text-sm">
+                  Leads assigned by{" "}
+                  {String(
+                    opt("agent", "assign") ?? "office default"
+                  ).toLowerCase()}
+                  .
+                </p>
+              </div>
+              <div className="rounded-3xl border border-line p-6">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="field" />
+                  <div className="field" />
+                  <div className="field col-span-2" />
+                </div>
+                {opt("agent", "timeline") === true ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {timelines.map((t, i) => (
+                      <span
+                        className={`rounded-full px-3 py-1.5 text-sm ring-1 ${i === 1 ? "bg-ink text-canvas ring-ink" : "ring-line"}`}
+                        key={t}
+                      >
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+                <span className="btn btn-brand btn-pill mt-5">
+                  Talk to {firstName}
+                </span>
+              </div>
+            </div>
+          ) : null}
+
+          {s.id === "lender" ? (
+            <div className="bg-surface px-8 py-10">
+              <h3 className="t-h3">{text(s, "heading")}</h3>
+              <p className="mt-1 text-ink-muted text-sm">
+                Co-branded block · NMLS {String(opt("lender", "nmls") ?? "")}.
+                Rates shown are illustrative.
+              </p>
+            </div>
+          ) : null}
+
+          {s.id === "compliance" ? (
+            <div className="px-8 py-6 text-ink-muted text-xs">
+              {tenant.mlsDisclaimer}
+            </div>
+          ) : null}
+        </div>
+      ))}
+
+      {placement === "embed" ? null : (
+        <div className="border-line border-t px-8 py-8">
+          <div
+            className={`grid gap-6 text-sm ${phone ? "grid-cols-1" : "grid-cols-4"}`}
+          >
+            {footer
+              .filter((b) => b.on)
+              .map((b) => (
+                <div key={b.id}>
+                  {b.id === "brand" ? (
+                    <div>
+                      {brandMark}
+                      <p className="mt-2 text-ink-muted">{tenant.tagline}</p>
+                    </div>
+                  ) : null}
+                  {b.id === "links" ? (
+                    <ul className="space-y-1 text-ink-muted">
+                      <li>Home value</li>
+                      <li>Sell with us</li>
+                      <li>Find a home</li>
+                    </ul>
+                  ) : null}
+                  {b.id === "agent" ? (
+                    <div className="flex items-center gap-2">
+                      <img
+                        alt=""
+                        className="size-8 rounded-full object-cover"
+                        height={32}
+                        src={tenant.agent.photo}
+                        width={32}
+                      />
+                      <div>
+                        <div className="font-medium">{tenant.agent.name}</div>
+                        <div className="text-ink-muted">
+                          {tenant.agent.title}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                  {b.id === "legal" ? (
+                    <p className="text-ink-muted text-xs">
+                      {tenant.mlsDisclaimer}
+                    </p>
+                  ) : null}
+                  {b.id === "social" ? (
+                    <div className="text-ink-muted">
+                      Instagram · Facebook · LinkedIn
+                    </div>
+                  ) : null}
+                  {b.id === "powered" ? (
+                    <div className="text-ink-muted">Powered by Reliance</div>
+                  ) : null}
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  if (placement !== "embed") {
+    return body;
+  }
+
+  return (
+    <div
+      className="bg-[oklch(0.96_0_0)] text-[oklch(0.25_0_0)]"
+      style={{ fontFamily: "Georgia, serif" }}
+    >
+      <div className="flex items-center justify-between border-[oklch(0.88_0_0)] border-b bg-white px-8 py-4">
+        <span className="font-semibold text-lg">harborvale.com</span>
+        <span className="text-sm">Buy · Sell · Agents · About</span>
+      </div>
+      <div className="px-8 py-10">
+        <h2 className="text-3xl">Sell your home with Harbor &amp; Vale</h2>
+        <p className="mt-2 max-w-xl text-[oklch(0.45_0_0)]">
+          The brokerage's own page, in its own typeface. The Home Report embed
+          sits below, wearing the brokerage theme.
+        </p>
+      </div>
+      <div className="relative mx-6 mb-10 rounded-2xl outline-dashed outline-2 outline-brand/40">
+        <span className="absolute top-3 right-3 z-10 rounded-full bg-brand px-2 py-0.5 text-[0.6875rem] text-brand-ink">
+          Embed · data-mode="inline"
+        </span>
+        <div className="overflow-hidden rounded-2xl">{body}</div>
+      </div>
+      <div className="border-[oklch(0.88_0_0)] border-t bg-white px-8 py-6 text-[oklch(0.45_0_0)] text-sm">
+        © 2026 Harbor &amp; Vale · The brokerage's own footer
       </div>
     </div>
   );

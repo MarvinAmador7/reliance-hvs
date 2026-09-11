@@ -13,7 +13,7 @@ interface AgreementChartProps {
   sources: readonly Source[];
 }
 
-const COLS = "grid-cols-[4.5rem_1fr_4rem] sm:grid-cols-[7rem_1fr_6rem]";
+const COLS = "grid-cols-[4.5rem_1fr_4rem] @xl:grid-cols-[7rem_1fr_6rem]";
 
 /**
  * Interval plot: each source's range as a band with a dot at its estimate,
@@ -86,7 +86,7 @@ export function AgreementChart({ sources }: AgreementChartProps) {
         <div className="relative mt-2 h-5 border-line border-t">
           {[
             { align: "", v: min },
-            { align: "hidden sm:block -translate-x-1/2", v: mid },
+            { align: "hidden @xl:block -translate-x-1/2", v: mid },
             { align: "-translate-x-full", v: max },
           ].map(({ v, align }) => (
             <span

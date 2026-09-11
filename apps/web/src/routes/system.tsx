@@ -362,7 +362,10 @@ function SystemPage() {
           })}
         </div>
 
-        <div className="home-report space-y-20" style={tenantVars(tenant)}>
+        <div
+          className="home-report @container space-y-20"
+          style={tenantVars(tenant)}
+        >
           <Section
             intro="One family, Hanken Grotesk, on both surfaces. Public pages use a fluid scale; the console uses fixed sizes."
             title="Type"

@@ -40,7 +40,7 @@ export function SellForPanel({ sources }: SellForPanelProps) {
   const high = roundK(overlapHigh * factor);
 
   return (
-    <div className="grid gap-10 md:grid-cols-[1fr_1.35fr]">
+    <div className="grid @3xl:grid-cols-[1fr_1.35fr] gap-10">
       <div>
         <h3 className="t-h3">What could it sell for?</h3>
         <p className="mt-3 text-ink-muted">
