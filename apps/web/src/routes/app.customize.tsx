@@ -363,6 +363,34 @@ const footerCatalog: Record<
 
 const MAX_FOOTER_COLUMNS = 4;
 
+type HeaderBlockId = "logo" | "links" | "search" | "phone" | "agent" | "talk";
+
+interface HeaderBlock {
+  id: HeaderBlockId;
+  on: boolean;
+}
+
+const headerCatalog: Record<
+  HeaderBlockId,
+  { label: string; locked?: boolean; hint?: string }
+> = {
+  agent: { hint: "Agent pages only", label: "Agent name and photo" },
+  links: { hint: "Home value · Sell · Buy", label: "Site links" },
+  logo: { label: "Logo", locked: true },
+  phone: { label: "Office phone" },
+  search: { hint: "On the report page", label: "Address search" },
+  talk: { label: "Talk to an agent button" },
+};
+
+const initialHeader: HeaderBlock[] = [
+  { id: "logo", on: true },
+  { id: "agent", on: true },
+  { id: "links", on: false },
+  { id: "search", on: true },
+  { id: "phone", on: true },
+  { id: "talk", on: true },
+];
+
 const initialFooter: FooterColumn[] = [
   { blocks: ["brand"], id: "c1" },
   { blocks: ["links"], id: "c2" },
@@ -420,6 +448,8 @@ function CustomizePage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [chrome, setChrome] = useState<ChromeMode>("composable");
   const [footer, setFooter] = useState<FooterColumn[]>(initialFooter);
+  const [header, setHeader] = useState<HeaderBlock[]>(initialHeader);
+  const [stickyHeader, setStickyHeader] = useState(true);
   const [radius, setRadius] = useState<number>(
     Number.parseInt(tenant.theme.radius, 10)
   );
@@ -495,6 +525,8 @@ function CustomizePage() {
   const discard = () => {
     setSections(initialSections);
     setFooter(initialFooter);
+    setHeader(initialHeader);
+    setStickyHeader(true);
     setBrand(null);
     setLogo(null);
     setTypeface("reliance");
@@ -868,7 +900,21 @@ function CustomizePage() {
                 ))}
               </fieldset>
               {chrome === "composable" ? (
-                <FooterEditor columns={footer} onChange={editFooter} />
+                <>
+                  <HeaderEditor
+                    blocks={header}
+                    onChange={(next) => {
+                      setHeader(next);
+                      touch();
+                    }}
+                    onSticky={(v) => {
+                      setStickyHeader(v);
+                      touch();
+                    }}
+                    sticky={stickyHeader}
+                  />
+                  <FooterEditor columns={footer} onChange={editFooter} />
+                </>
               ) : null}
               {chrome === "html" ? (
                 <div className="space-y-3">
@@ -1006,6 +1052,7 @@ function CustomizePage() {
             >
               <ReportPreview
                 footer={footer}
+                header={header}
                 logo={logo}
                 phone={device === "phone"}
                 placement={placement}
@@ -1275,6 +1322,7 @@ function CopyField({
 
 interface ReportPreviewProps {
   footer: FooterColumn[];
+  header: HeaderBlock[];
   logo: string | null;
   phone: boolean;
   placement: Placement;
@@ -1305,6 +1353,7 @@ function ReportPreview({
   sections,
   placement,
   footer,
+  header,
   logo,
   selectedId,
   vars,
@@ -1354,10 +1403,11 @@ function ReportPreview({
   const body = (
     <div className="home-report @container bg-canvas text-ink" style={vars}>
       {placement === "embed" ? null : (
-        <div className="flex items-center justify-between px-8 py-4">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-6 px-8 py-4">
+          <div className="flex min-w-0 items-center gap-3">
             {brandMark}
-            {placement === "agent" ? (
+            {placement === "agent" &&
+            header.find((h) => h.id === "agent")?.on ? (
               <span className="flex items-center gap-2 border-line border-l pl-3 text-sm">
                 <img
                   alt=""
@@ -1370,9 +1420,19 @@ function ReportPreview({
               </span>
             ) : null}
           </div>
-          <span className="btn btn-ghost btn-sm rounded-full">
-            Talk to {placement === "agent" ? firstName : "an agent"}
-          </span>
+          <div className="flex min-w-0 items-center gap-2">
+            {header
+              .filter((h) => h.on && h.id !== "logo" && h.id !== "agent")
+              .map((h) => (
+                <HeaderBlockView
+                  firstName={firstName}
+                  id={h.id}
+                  key={h.id}
+                  phone={phone}
+                  placement={placement}
+                />
+              ))}
+          </div>
         </div>
       )}
 
@@ -2092,6 +2152,146 @@ function FooterBlockView({
             Google Play
           </span>
         </div>
+      );
+    default:
+      return null;
+  }
+}
+
+/* ---------- Header editor ---------- */
+
+function HeaderEditor({
+  blocks,
+  onChange,
+  sticky,
+  onSticky,
+}: {
+  blocks: HeaderBlock[];
+  onChange: (next: HeaderBlock[]) => void;
+  sticky: boolean;
+  onSticky: (v: boolean) => void;
+}) {
+  const move = (index: number, dir: -1 | 1) => {
+    const to = index + dir;
+    if (to < 1 || to >= blocks.length) {
+      return;
+    }
+    const next = [...blocks];
+    const [item] = next.splice(index, 1);
+    if (item) {
+      next.splice(to, 0, item);
+    }
+    onChange(next);
+  };
+  return (
+    <div className="mb-6">
+      <span className="mb-1.5 block font-medium text-sm">Header</span>
+      <p className="c-label mb-2">
+        Logo stays first. Everything else can be turned off or reordered, left
+        to right.
+      </p>
+      <ul className="divide-y divide-line">
+        {blocks.map((b, i) => {
+          const meta = headerCatalog[b.id];
+          return (
+            <li className="flex items-center gap-2 py-2 text-sm" key={b.id}>
+              <span className="min-w-0 flex-1">
+                <span className="block">{meta.label}</span>
+                {meta.hint ? (
+                  <span className="c-label block">{meta.hint}</span>
+                ) : null}
+              </span>
+              {meta.locked ? null : (
+                <>
+                  <button
+                    aria-label={`Move ${meta.label} left`}
+                    className="rounded p-0.5 text-ink-muted hover:text-ink disabled:opacity-30"
+                    disabled={i <= 1}
+                    onClick={() => move(i, -1)}
+                    type="button"
+                  >
+                    <ChevronUp aria-hidden="true" className="size-3.5" />
+                  </button>
+                  <button
+                    aria-label={`Move ${meta.label} right`}
+                    className="rounded p-0.5 text-ink-muted hover:text-ink disabled:opacity-30"
+                    disabled={i === blocks.length - 1}
+                    onClick={() => move(i, 1)}
+                    type="button"
+                  >
+                    <ChevronDown aria-hidden="true" className="size-3.5" />
+                  </button>
+                </>
+              )}
+              {meta.locked ? (
+                <Lock
+                  aria-hidden="true"
+                  className="ml-2 size-4 text-ink-muted"
+                />
+              ) : (
+                <Switch
+                  checked={b.on}
+                  label={meta.label}
+                  onChange={(v) =>
+                    onChange(
+                      blocks.map((x) => (x.id === b.id ? { ...x, on: v } : x))
+                    )
+                  }
+                />
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <div className="mt-3 flex items-center justify-between rounded-[10px] bg-surface px-3 py-2.5 text-sm">
+        <div>
+          <div className="font-medium">Sticky header</div>
+          <div className="c-label">
+            Keeps the logo and the agent button in view while scrolling.
+          </div>
+        </div>
+        <Switch checked={sticky} label="Sticky header" onChange={onSticky} />
+      </div>
+    </div>
+  );
+}
+
+function HeaderBlockView({
+  id,
+  firstName,
+  phone,
+  placement,
+}: {
+  id: HeaderBlockId;
+  firstName: string;
+  phone: boolean;
+  placement: Placement;
+}) {
+  const { tenant } = useTenant();
+  switch (id) {
+    case "links":
+      return phone ? null : (
+        <span className="flex items-center gap-4 pr-2 text-ink-muted text-sm">
+          <span>Home value</span>
+          <span>Sell</span>
+          <span>Buy</span>
+        </span>
+      );
+    case "search":
+      return phone ? null : (
+        <span className="flex h-9 w-56 items-center gap-2 rounded-full px-3 text-ink-muted text-sm ring-1 ring-line">
+          Search another address
+        </span>
+      );
+    case "phone":
+      return phone ? null : (
+        <span className="px-2 text-sm">{tenant.phone}</span>
+      );
+    case "talk":
+      return (
+        <span className="btn btn-ghost btn-sm rounded-full">
+          Talk to {placement === "agent" ? firstName : "an agent"}
+        </span>
       );
     default:
       return null;
