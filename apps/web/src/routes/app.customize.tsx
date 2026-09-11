@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
+  ArrowRight,
   Check,
   ChevronDown,
   ChevronUp,
@@ -10,6 +11,7 @@ import {
   Lock,
   RotateCcw,
   Upload,
+  X,
 } from "lucide-react";
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 
@@ -307,12 +309,6 @@ const placementsList = [
   { label: "Agent page", value: "agent" },
 ] as const;
 
-const languages = [
-  { label: "English", value: "en" },
-  { label: "Español", value: "es" },
-] as const;
-type Language = (typeof languages)[number]["value"];
-
 const chromeModes = [
   {
     body: "Turn blocks on or off and reorder them. Always on-brand, responsive, and accessible. Recommended.",
@@ -332,20 +328,46 @@ const chromeModes = [
 ] as const;
 type ChromeMode = (typeof chromeModes)[number]["value"];
 
-interface FooterBlock {
+type FooterBlockId =
+  | "brand"
+  | "links"
+  | "agent"
+  | "legal"
+  | "social"
+  | "powered"
+  | "contact"
+  | "badges"
+  | "text"
+  | "apps";
+
+interface FooterColumn {
+  blocks: FooterBlockId[];
   id: string;
-  label: string;
-  locked?: boolean;
-  on: boolean;
 }
 
-const initialFooter: FooterBlock[] = [
-  { id: "brand", label: "Brand and tagline", on: true },
-  { id: "links", label: "Explore links", on: true },
-  { id: "agent", label: "Local expert card", on: true },
-  { id: "legal", label: "Legal and MLS disclaimer", locked: true, on: true },
-  { id: "social", label: "Social links", on: false },
-  { id: "powered", label: "Powered by Reliance", locked: true, on: true },
+const footerCatalog: Record<
+  FooterBlockId,
+  { label: string; locked?: boolean }
+> = {
+  agent: { label: "Local expert card" },
+  apps: { label: "Download our app" },
+  badges: { label: "Equal Housing and REALTOR® badges" },
+  brand: { label: "Brand and tagline" },
+  contact: { label: "Office contact" },
+  legal: { label: "Legal and MLS disclaimer", locked: true },
+  links: { label: "Explore links" },
+  powered: { label: "Powered by Reliance", locked: true },
+  social: { label: "Social links" },
+  text: { label: "Custom text" },
+};
+
+const MAX_FOOTER_COLUMNS = 4;
+
+const initialFooter: FooterColumn[] = [
+  { blocks: ["brand"], id: "c1" },
+  { blocks: ["links"], id: "c2" },
+  { blocks: ["agent"], id: "c3" },
+  { blocks: ["legal", "powered"], id: "c4" },
 ];
 
 const typefaces = [
@@ -397,21 +419,19 @@ function CustomizePage() {
   const [sections, setSections] = useState<Section[]>(initialSections);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [chrome, setChrome] = useState<ChromeMode>("composable");
-  const [footer, setFooter] = useState<FooterBlock[]>(initialFooter);
+  const [footer, setFooter] = useState<FooterColumn[]>(initialFooter);
   const [radius, setRadius] = useState<number>(
     Number.parseInt(tenant.theme.radius, 10)
   );
   const [brand, setBrand] = useState<string | null>(null);
   const [logo, setLogo] = useState<string | null>(null);
   const [typeface, setTypeface] = useState<Typeface>("reliance");
-  const [language, setLanguage] = useState<Language>("en");
   const [changes, setChanges] = useState(0);
   const [lastPublished, setLastPublished] = useState(
     "Tue, 2:14 pm by Maya Ortiz"
   );
   const [history, setHistory] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
-  const [spanish, setSpanish] = useState<Record<string, string>>({});
   const previewRef = useRef<HTMLDivElement>(null);
 
   const touch = () => setChanges((n) => n + 1);
@@ -459,15 +479,8 @@ function CustomizePage() {
     touch();
   };
 
-  const moveFooter = (index: number) => {
-    setFooter((prev) => {
-      const next = [...prev];
-      const [item] = next.splice(index, 1);
-      if (item) {
-        next.splice(index - 1, 0, item);
-      }
-      return next;
-    });
+  const editFooter = (next: FooterColumn[]) => {
+    setFooter(next);
     touch();
   };
 
@@ -486,7 +499,6 @@ function CustomizePage() {
     setLogo(null);
     setTypeface("reliance");
     setRadius(Number.parseInt(tenant.theme.radius, 10));
-    setSpanish({});
     setChanges(0);
   };
 
@@ -516,9 +528,6 @@ function CustomizePage() {
   const visibleSections = sections.filter(
     (s) => s.visible && s.placements[placement]
   );
-  const overridden = Object.values(spanish).filter(
-    (v) => v.trim().length > 0
-  ).length;
   const placementUrl: Record<Placement, string> = {
     agent: `${tenant.website}/agents/${tenant.agent.name.split(" ")[0]?.toLowerCase() ?? ""}`,
     embed: `${tenant.website}/sell-your-home`,
@@ -859,52 +868,7 @@ function CustomizePage() {
                 ))}
               </fieldset>
               {chrome === "composable" ? (
-                <div>
-                  <span className="mb-1.5 block font-medium text-sm">
-                    Footer blocks
-                  </span>
-                  <p className="c-label mb-2">
-                    In the order they appear. Locked blocks are required.
-                  </p>
-                  <ul className="divide-y divide-line">
-                    {footer.map((b, i) => (
-                      <li
-                        className="flex items-center gap-2 py-2 text-sm"
-                        key={b.id}
-                      >
-                        <span className="flex-1">{b.label}</span>
-                        <button
-                          aria-label={`Move ${b.label} up`}
-                          className="rounded p-0.5 text-ink-muted hover:text-ink disabled:opacity-30"
-                          disabled={i === 0}
-                          onClick={() => moveFooter(i)}
-                          type="button"
-                        >
-                          <ChevronUp aria-hidden="true" className="size-3.5" />
-                        </button>
-                        {b.locked ? (
-                          <Lock
-                            aria-hidden="true"
-                            className="ml-2 size-4 text-ink-muted"
-                          />
-                        ) : (
-                          <Switch
-                            checked={b.on}
-                            label={b.label}
-                            onChange={(v) => {
-                              setFooter((prev) =>
-                                prev.map((x) =>
-                                  x.id === b.id ? { ...x, on: v } : x
-                                )
-                              );
-                              touch();
-                            }}
-                          />
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <FooterEditor columns={footer} onChange={editFooter} />
               ) : null}
               {chrome === "html" ? (
                 <div className="space-y-3">
@@ -962,69 +926,40 @@ function CustomizePage() {
 
           {tab === "copy" ? (
             <div className="mt-5 space-y-4">
-              <div className="flex items-center justify-between gap-3">
-                <Segmented
-                  label="Language"
-                  onChange={setLanguage}
-                  options={languages}
-                  value={language}
-                />
-                {language === "es" ? (
-                  <span className="c-label">{overridden} translated</span>
-                ) : null}
-              </div>
               <p className="c-label">
-                {language === "en"
-                  ? "English copy is edited per section. Open a section under Sections to change its heading and lead."
-                  : "Leave a field empty to fall back to English. Reports pick the language from the visitor's browser or a ?lang= link."}
+                Every heading and lead on the report. Tokens like {"{value}"},{" "}
+                {"{count}"}, and {"{agent}"} fill in per report.
               </p>
-              <div className="max-h-[32rem] space-y-4 overflow-y-auto pr-1">
+              <div className="max-h-[34rem] space-y-5 overflow-y-auto pr-1">
                 {sections
-                  .filter((s) => s.heading)
-                  .map((s) => (
-                    <div key={s.id}>
-                      <div className="mb-1.5 font-medium text-sm">{s.name}</div>
-                      {language === "en" ? (
-                        <div className="rounded-[10px] bg-surface px-3 py-2 text-sm">
-                          <div>{s.heading}</div>
-                          {s.lead ? (
-                            <div className="c-label mt-1">{s.lead}</div>
-                          ) : null}
+                  .filter((sec) => sec.heading)
+                  .map((sec) => {
+                    const defaults = initialSections.find(
+                      (d) => d.id === sec.id
+                    );
+                    return (
+                      <div key={sec.id}>
+                        <div className="mb-1.5 font-medium text-sm">
+                          {sec.name}
                         </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <input
-                            className="field text-sm"
-                            onChange={(e) => {
-                              setSpanish((prev) => ({
-                                ...prev,
-                                [`${s.id}.heading`]: e.target.value,
-                              }));
-                              touch();
-                            }}
-                            placeholder={s.heading}
-                            type="text"
-                            value={spanish[`${s.id}.heading`] ?? ""}
+                        <CopyField
+                          defaultValue={defaults?.heading ?? ""}
+                          label="Heading"
+                          onChange={(v) => update(sec.id, { heading: v })}
+                          value={sec.heading}
+                        />
+                        {defaults?.lead ? (
+                          <CopyField
+                            defaultValue={defaults.lead}
+                            label="Lead"
+                            multiline
+                            onChange={(v) => update(sec.id, { lead: v })}
+                            value={sec.lead}
                           />
-                          {s.lead ? (
-                            <input
-                              className="field text-sm"
-                              onChange={(e) => {
-                                setSpanish((prev) => ({
-                                  ...prev,
-                                  [`${s.id}.lead`]: e.target.value,
-                                }));
-                                touch();
-                              }}
-                              placeholder={s.lead}
-                              type="text"
-                              value={spanish[`${s.id}.lead`] ?? ""}
-                            />
-                          ) : null}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                        ) : null}
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           ) : null}
@@ -1339,7 +1274,7 @@ function CopyField({
 /* ---------- Live preview ---------- */
 
 interface ReportPreviewProps {
-  footer: FooterBlock[];
+  footer: FooterColumn[];
   logo: string | null;
   phone: boolean;
   placement: Placement;
@@ -1773,57 +1708,20 @@ function ReportPreview({
       {placement === "embed" ? null : (
         <div className="border-line border-t px-8 py-8">
           <div
-            className={`grid gap-6 text-sm ${phone ? "grid-cols-1" : "grid-cols-4"}`}
+            className="grid gap-8 text-sm"
+            style={{
+              gridTemplateColumns: phone
+                ? "1fr"
+                : `repeat(${footer.length}, minmax(0, 1fr))`,
+            }}
           >
-            {footer
-              .filter((b) => b.on)
-              .map((b) => (
-                <div key={b.id}>
-                  {b.id === "brand" ? (
-                    <div>
-                      {brandMark}
-                      <p className="mt-2 text-ink-muted">{tenant.tagline}</p>
-                    </div>
-                  ) : null}
-                  {b.id === "links" ? (
-                    <ul className="space-y-1 text-ink-muted">
-                      <li>Home value</li>
-                      <li>Sell with us</li>
-                      <li>Find a home</li>
-                    </ul>
-                  ) : null}
-                  {b.id === "agent" ? (
-                    <div className="flex items-center gap-2">
-                      <img
-                        alt=""
-                        className="size-8 rounded-full object-cover"
-                        height={32}
-                        src={tenant.agent.photo}
-                        width={32}
-                      />
-                      <div>
-                        <div className="font-medium">{tenant.agent.name}</div>
-                        <div className="text-ink-muted">
-                          {tenant.agent.title}
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
-                  {b.id === "legal" ? (
-                    <p className="text-ink-muted text-xs">
-                      {tenant.mlsDisclaimer}
-                    </p>
-                  ) : null}
-                  {b.id === "social" ? (
-                    <div className="text-ink-muted">
-                      Instagram · Facebook · LinkedIn
-                    </div>
-                  ) : null}
-                  {b.id === "powered" ? (
-                    <div className="text-ink-muted">Powered by Reliance</div>
-                  ) : null}
-                </div>
-              ))}
+            {footer.map((col) => (
+              <div className="space-y-5" key={col.id}>
+                {col.blocks.map((id) => (
+                  <FooterBlockView brandMark={brandMark} id={id} key={id} />
+                ))}
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -1861,4 +1759,341 @@ function ReportPreview({
       </div>
     </div>
   );
+}
+
+/* ---------- Footer editor ---------- */
+
+interface DragRef {
+  block: FooterBlockId;
+  col: string;
+}
+
+function FooterEditor({
+  columns,
+  onChange,
+}: {
+  columns: FooterColumn[];
+  onChange: (next: FooterColumn[]) => void;
+}) {
+  const [drag, setDrag] = useState<DragRef | null>(null);
+  const used = new Set(columns.flatMap((c) => c.blocks));
+  const unused = (Object.keys(footerCatalog) as FooterBlockId[]).filter(
+    (id) => !used.has(id)
+  );
+
+  const withoutBlock = (cols: FooterColumn[], block: FooterBlockId) =>
+    cols.map((c) => ({ ...c, blocks: c.blocks.filter((b) => b !== block) }));
+
+  const placeBlock = (
+    block: FooterBlockId,
+    colId: string,
+    index: number | null
+  ) => {
+    const cleared = withoutBlock(columns, block);
+    onChange(
+      cleared.map((c) => {
+        if (c.id !== colId) {
+          return c;
+        }
+        const blocks = [...c.blocks];
+        blocks.splice(index ?? blocks.length, 0, block);
+        return { ...c, blocks };
+      })
+    );
+  };
+
+  const moveColumn = (index: number, dir: -1 | 1) => {
+    const to = index + dir;
+    if (to < 0 || to >= columns.length) {
+      return;
+    }
+    const next = [...columns];
+    const [col] = next.splice(index, 1);
+    if (col) {
+      next.splice(to, 0, col);
+    }
+    onChange(next);
+  };
+
+  const moveBlock = (colIndex: number, blockIndex: number, dir: -1 | 1) => {
+    const col = columns[colIndex];
+    const block = col?.blocks[blockIndex];
+    if (!(col && block)) {
+      return;
+    }
+    const target = blockIndex + dir;
+    if (target >= 0 && target < col.blocks.length) {
+      placeBlock(block, col.id, target > blockIndex ? target + 1 : target);
+      return;
+    }
+    const nextCol = columns[colIndex + dir];
+    if (nextCol) {
+      placeBlock(block, nextCol.id, dir === 1 ? 0 : null);
+    }
+  };
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between">
+        <span className="font-medium text-sm">Footer layout</span>
+        <button
+          className="c-label hover:text-ink disabled:opacity-40"
+          disabled={columns.length >= MAX_FOOTER_COLUMNS}
+          onClick={() =>
+            onChange([...columns, { blocks: [], id: `c${Date.now()}` }])
+          }
+          type="button"
+        >
+          + Add column
+        </button>
+      </div>
+      <p className="c-label mb-3">
+        Drag blocks between columns or use the arrows. Locked blocks can move
+        but not be removed.
+      </p>
+      <div className="space-y-2">
+        {columns.map((col, ci) => (
+          // biome-ignore lint/a11y/noStaticElementInteractions: drop target for dragged blocks; every action is also reachable through the arrow buttons
+          // biome-ignore lint/a11y/noNoninteractiveElementInteractions: same drop target
+          <div
+            className={`rounded-[12px] border p-2.5 transition-colors ${
+              drag ? "border-brand/50 border-dashed" : "border-line"
+            }`}
+            key={col.id}
+            onDragOver={(e) => {
+              e.preventDefault();
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (drag) {
+                placeBlock(drag.block, col.id, null);
+                setDrag(null);
+              }
+            }}
+          >
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="c-label font-medium">Column {ci + 1}</span>
+              <span className="flex items-center gap-0.5">
+                <button
+                  aria-label={`Move column ${ci + 1} left`}
+                  className="rounded p-0.5 text-ink-muted hover:text-ink disabled:opacity-30"
+                  disabled={ci === 0}
+                  onClick={() => moveColumn(ci, -1)}
+                  type="button"
+                >
+                  <ArrowLeft aria-hidden="true" className="size-3.5" />
+                </button>
+                <button
+                  aria-label={`Move column ${ci + 1} right`}
+                  className="rounded p-0.5 text-ink-muted hover:text-ink disabled:opacity-30"
+                  disabled={ci === columns.length - 1}
+                  onClick={() => moveColumn(ci, 1)}
+                  type="button"
+                >
+                  <ArrowRight aria-hidden="true" className="size-3.5" />
+                </button>
+                {col.blocks.length === 0 && columns.length > 1 ? (
+                  <button
+                    aria-label={`Remove column ${ci + 1}`}
+                    className="ml-1 rounded p-0.5 text-ink-muted hover:text-bad"
+                    onClick={() =>
+                      onChange(columns.filter((c) => c.id !== col.id))
+                    }
+                    type="button"
+                  >
+                    <X aria-hidden="true" className="size-3.5" />
+                  </button>
+                ) : null}
+              </span>
+            </div>
+            <ul className="space-y-1">
+              {col.blocks.length === 0 ? (
+                <li className="c-label rounded-[8px] border border-line border-dashed px-2 py-2 text-center">
+                  Drop a block here
+                </li>
+              ) : null}
+              {col.blocks.map((block, bi) => {
+                const meta = footerCatalog[block];
+                return (
+                  // biome-ignore lint/a11y/noNoninteractiveElementInteractions: drag handlers move the block; the arrow buttons provide the keyboard path
+                  <li
+                    className={`flex items-center gap-1.5 rounded-[8px] bg-surface px-2 py-1.5 text-sm ${
+                      drag?.block === block ? "opacity-40" : ""
+                    }`}
+                    draggable
+                    key={block}
+                    onDragEnd={() => setDrag(null)}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onDragStart={() => setDrag({ block, col: col.id })}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (drag && drag.block !== block) {
+                        placeBlock(drag.block, col.id, bi);
+                        setDrag(null);
+                      }
+                    }}
+                  >
+                    <GripVertical
+                      aria-hidden="true"
+                      className="size-4 shrink-0 cursor-grab text-ink-muted"
+                    />
+                    <span className="min-w-0 flex-1 truncate">
+                      {meta.label}
+                    </span>
+                    <button
+                      aria-label={`Move ${meta.label} up`}
+                      className="rounded p-0.5 text-ink-muted hover:text-ink disabled:opacity-30"
+                      disabled={bi === 0 && ci === 0}
+                      onClick={() => moveBlock(ci, bi, -1)}
+                      type="button"
+                    >
+                      <ChevronUp aria-hidden="true" className="size-3.5" />
+                    </button>
+                    <button
+                      aria-label={`Move ${meta.label} down`}
+                      className="rounded p-0.5 text-ink-muted hover:text-ink disabled:opacity-30"
+                      disabled={
+                        bi === col.blocks.length - 1 &&
+                        ci === columns.length - 1
+                      }
+                      onClick={() => moveBlock(ci, bi, 1)}
+                      type="button"
+                    >
+                      <ChevronDown aria-hidden="true" className="size-3.5" />
+                    </button>
+                    {meta.locked ? (
+                      <Lock
+                        aria-hidden="true"
+                        className="ml-1 size-3.5 text-ink-muted"
+                      />
+                    ) : (
+                      <button
+                        aria-label={`Remove ${meta.label}`}
+                        className="ml-1 rounded p-0.5 text-ink-muted hover:text-bad"
+                        onClick={() => onChange(withoutBlock(columns, block))}
+                        type="button"
+                      >
+                        <X aria-hidden="true" className="size-3.5" />
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+            {unused.length > 0 ? (
+              <select
+                aria-label={`Add a block to column ${ci + 1}`}
+                className="field mt-1.5 h-8 appearance-none text-ink-muted text-xs"
+                onChange={(e) => {
+                  const block = e.target.value as FooterBlockId | "";
+                  if (block) {
+                    placeBlock(block, col.id, null);
+                  }
+                  e.target.value = "";
+                }}
+                value=""
+              >
+                <option value="">+ Add block</option>
+                {unused.map((id) => (
+                  <option key={id} value={id}>
+                    {footerCatalog[id].label}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FooterBlockView({
+  id,
+  brandMark,
+}: {
+  id: FooterBlockId;
+  brandMark: React.ReactNode;
+}) {
+  const { tenant } = useTenant();
+  switch (id) {
+    case "brand":
+      return (
+        <div>
+          {brandMark}
+          <p className="mt-2 text-ink-muted">{tenant.tagline}</p>
+        </div>
+      );
+    case "links":
+      return (
+        <ul className="space-y-1 text-ink-muted">
+          <li>Home value</li>
+          <li>Sell with us</li>
+          <li>Find a home</li>
+        </ul>
+      );
+    case "agent":
+      return (
+        <div className="flex items-center gap-2">
+          <img
+            alt=""
+            className="size-8 rounded-full object-cover"
+            height={32}
+            src={tenant.agent.photo}
+            width={32}
+          />
+          <div>
+            <div className="font-medium">{tenant.agent.name}</div>
+            <div className="text-ink-muted">{tenant.agent.title}</div>
+          </div>
+        </div>
+      );
+    case "legal":
+      return <p className="text-ink-muted text-xs">{tenant.mlsDisclaimer}</p>;
+    case "social":
+      return (
+        <div className="text-ink-muted">Instagram · Facebook · LinkedIn</div>
+      );
+    case "powered":
+      return <div className="text-ink-muted">Powered by Reliance</div>;
+    case "contact":
+      return (
+        <div className="text-ink-muted">
+          <div className="font-medium text-ink">{tenant.legalName}</div>
+          <div>
+            {tenant.city}, {tenant.state}
+          </div>
+          <div>{tenant.phone}</div>
+        </div>
+      );
+    case "badges":
+      return (
+        <div className="text-ink-muted text-xs">
+          Equal Housing Opportunity · REALTOR®
+        </div>
+      );
+    case "text":
+      return (
+        <p className="text-ink-muted">
+          Serving {tenant.city} since 1998. Licensed in {tenant.state}.
+        </p>
+      );
+    case "apps":
+      return (
+        <div className="flex gap-2">
+          <span className="rounded-md bg-ink px-2 py-1 text-canvas text-xs">
+            App Store
+          </span>
+          <span className="rounded-md bg-ink px-2 py-1 text-canvas text-xs">
+            Google Play
+          </span>
+        </div>
+      );
+    default:
+      return null;
+  }
 }
