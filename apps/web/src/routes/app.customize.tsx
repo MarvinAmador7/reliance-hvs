@@ -618,7 +618,7 @@ function CustomizePage() {
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[23rem_1fr]">
-        <div className="panel self-start p-4">
+        <div className="panel self-start p-4 lg:max-h-[calc(100svh_-_13.25rem)] lg:overflow-y-auto">
           <Segmented
             label="Customize section"
             onChange={setTab}
@@ -965,7 +965,7 @@ function CustomizePage() {
           ) : null}
         </div>
 
-        <div className="panel flex min-w-0 flex-col p-4">
+        <div className="panel flex min-w-0 flex-col p-4 lg:h-[calc(100svh_-_13.25rem)]">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <Segmented
@@ -995,9 +995,9 @@ function CustomizePage() {
               </Link>
             </div>
           </div>
-          <div className="flex flex-1 justify-center overflow-hidden rounded-[12px] bg-surface p-4">
+          <div className="flex min-h-0 flex-1 justify-center overflow-hidden rounded-[12px] bg-surface p-4">
             <div
-              className="h-[46rem] overflow-y-auto rounded-[12px] shadow-frame transition-[width] duration-300"
+              className="relative h-full overflow-y-auto rounded-[12px] shadow-frame transition-[width] duration-300 [contain:layout_paint]"
               ref={previewRef}
               style={{
                 width: device === "phone" ? 390 : "100%",

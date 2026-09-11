@@ -4,8 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "serve": "vite preview",
-    "dev": "vite dev"
+    "dev": "vite dev",
+    "serve": "vite preview"
   },
   "dependencies": {
     "@orpc/client": "catalog:",

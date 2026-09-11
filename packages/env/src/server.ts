@@ -7,7 +7,9 @@ function getVercelOrigin() {
     process.env.VERCEL_ENV === "production"
       ? (process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL)
       : (process.env.VERCEL_URL ?? process.env.VERCEL_PROJECT_PRODUCTION_URL);
-  if (!vercelUrl) return undefined;
+  if (!vercelUrl) {
+    return;
+  }
   return vercelUrl.startsWith("http") ? vercelUrl : `https://${vercelUrl}`;
 }
 
@@ -20,14 +22,16 @@ const runtimeEnv = {
 };
 
 export const env = createEnv({
+  emptyStringAsUndefined: true,
+  runtimeEnv,
   server: {
-    DATABASE_URL: z.string().min(1),
     BETTER_AUTH_SECRET: z.string().min(32),
     BETTER_AUTH_URL: z.url(),
     CORS_ORIGIN: z.url(),
-    NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+    DATABASE_URL: z.string().min(1),
+    NODE_ENV: z
+      .enum(["development", "production", "test"])
+      .default("development"),
   },
-  runtimeEnv: runtimeEnv,
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
-  emptyStringAsUndefined: true,
 });

@@ -8,9 +8,12 @@ import { appRouter } from "@reliance-hvs/api/routers/index";
 import { auth } from "@reliance-hvs/auth";
 import { env } from "@reliance-hvs/env/server";
 import { initLogger } from "evlog";
-import { createAuthMiddleware, type BetterAuthInstance } from "evlog/better-auth";
+import {
+  type BetterAuthInstance,
+  createAuthMiddleware,
+} from "evlog/better-auth";
 import { createFsDrain } from "evlog/fs";
-import { evlog, type EvlogVariables } from "evlog/hono";
+import { type EvlogVariables, evlog } from "evlog/hono";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 
@@ -25,7 +28,11 @@ const identifyUser = createAuthMiddleware(auth as BetterAuthInstance, {
 
 const app = new Hono<EvlogVariables>();
 
-app.use(evlog({ drain: process.env.NODE_ENV === "production" ? undefined : createFsDrain() }));
+app.use(
+  evlog({
+    drain: process.env.NODE_ENV === "production" ? undefined : createFsDrain(),
+  })
+);
 app.use("*", async (c, next) => {
   await identifyUser(c.get("log"), c.req.raw.headers, c.req.path);
   await next();
@@ -34,24 +41,24 @@ app.use("*", async (c, next) => {
 app.use(
   "/*",
   cors({
-    origin: env.CORS_ORIGIN,
-    allowMethods: ["GET", "POST", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
+    allowMethods: ["GET", "POST", "OPTIONS"],
     credentials: true,
-  }),
+    origin: env.CORS_ORIGIN,
+  })
 );
 
 app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
 export const apiHandler = new OpenAPIHandler(appRouter, {
-  plugins: [
-    new OpenAPIReferencePlugin({
-      schemaConverters: [new ZodToJsonSchemaConverter()],
-    }),
-  ],
   interceptors: [
     onError((error) => {
       console.error(error);
+    }),
+  ],
+  plugins: [
+    new OpenAPIReferencePlugin({
+      schemaConverters: [new ZodToJsonSchemaConverter()],
     }),
   ],
 });
@@ -68,8 +75,8 @@ app.use("/*", async (c, next) => {
   const context = await createContext({ context: c });
 
   const rpcResult = await rpcHandler.handle(c.req.raw, {
+    context,
     prefix: "/rpc",
-    context: context,
   });
 
   if (rpcResult.matched) {
@@ -77,8 +84,8 @@ app.use("/*", async (c, next) => {
   }
 
   const apiResult = await apiHandler.handle(c.req.raw, {
+    context,
     prefix: "/api-reference",
-    context: context,
   });
 
   if (apiResult.matched) {
@@ -88,8 +95,6 @@ app.use("/*", async (c, next) => {
   await next();
 });
 
-app.get("/", (c) => {
-  return c.text("OK");
-});
+app.get("/", (c) => c.text("OK"));
 
 export default app;

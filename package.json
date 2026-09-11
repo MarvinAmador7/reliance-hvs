@@ -1,6 +1,7 @@
 {
   "name": "reliance-hvs",
   "private": true,
+  "type": "module",
   "workspaces": {
     "packages": [
       "apps/*",
@@ -28,25 +29,24 @@
       "@types/react-dom": "^19.2.3"
     }
   },
-  "type": "module",
   "scripts": {
-    "dev": "turbo run dev",
     "build": "turbo run build",
+    "check": "ultracite check",
     "check-types": "turbo run check-types",
-    "dev:web": "turbo run dev -F web --",
-    "dev:server": "turbo run dev -F server --",
-    "db:push": "turbo run db:push -F @reliance-hvs/db --",
-    "db:studio": "turbo run db:studio -F @reliance-hvs/db --",
     "db:generate": "turbo run db:generate -F @reliance-hvs/db --",
     "db:migrate": "turbo run db:migrate -F @reliance-hvs/db --",
+    "db:push": "turbo run db:push -F @reliance-hvs/db --",
+    "db:studio": "turbo run db:studio -F @reliance-hvs/db --",
+    "deploy": "vercel deploy",
+    "deploy:check": "vercel deploy --dry",
+    "deploy:prod": "vercel deploy --prod",
     "deploy:setup": "vercel link",
+    "dev": "turbo run dev",
+    "dev:server": "turbo run dev -F server --",
     "dev:vercel": "vercel dev -L",
+    "dev:web": "turbo run dev -F web --",
     "env:preview": "tsx scripts/sync-vercel-env.ts preview",
     "env:production": "tsx scripts/sync-vercel-env.ts production",
-    "deploy": "vercel deploy",
-    "deploy:prod": "vercel deploy --prod",
-    "deploy:check": "vercel deploy --dry",
-    "check": "ultracite check",
     "fix": "ultracite fix"
   },
   "dependencies": {

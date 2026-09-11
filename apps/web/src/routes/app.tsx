@@ -10,7 +10,7 @@ export const Route = createFileRoute("/app")({
 function ConsoleLayout() {
   return (
     <div className="grid min-h-svh bg-canvas text-ink md:grid-cols-[15rem_1fr]">
-      <div className="hidden md:block">
+      <div className="hidden border-line border-r bg-surface md:block">
         <div className="sticky top-0 h-svh">
           <Sidebar />
         </div>
