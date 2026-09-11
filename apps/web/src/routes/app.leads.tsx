@@ -948,33 +948,6 @@ function LeadDetail({
         </p>
       </div>
 
-      <div className="mt-4 flex items-center justify-between text-sm">
-        <span className="c-label">CRM</span>
-        {row.extra.crm.status === "Synced" ? (
-          <a
-            className="inline-flex items-center gap-1 font-medium hover:text-brand"
-            href="#crm"
-          >
-            {row.extra.crm.id}{" "}
-            <ExternalLink aria-hidden="true" className="size-3.5" />
-          </a>
-        ) : (
-          <span className="flex items-center gap-2">
-            <Pill
-              tone={row.extra.crm.status === "Pending" ? "warn" : "neutral"}
-            >
-              {row.extra.crm.status}
-            </Pill>
-            <button
-              className="font-medium text-brand hover:underline"
-              type="button"
-            >
-              Push now
-            </button>
-          </span>
-        )}
-      </div>
-
       <div className="mt-4 rounded-[12px] border border-line p-3">
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-1.5 font-medium text-sm">
