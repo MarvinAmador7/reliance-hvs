@@ -4,6 +4,7 @@ import {
   Check,
   Download,
   ExternalLink,
+  Eye,
   Flame,
   Mail,
   MessageSquare,
@@ -41,6 +42,14 @@ interface AgentAction {
   t: string;
 }
 
+interface Watch {
+  lastOpened?: string;
+  next: string;
+  opened: number;
+  sent: number;
+  since: string;
+}
+
 interface Extra {
   actions: AgentAction[];
   crm: { status: "Synced" | "Pending" | "Not sent"; id?: string };
@@ -50,6 +59,7 @@ interface Extra {
   reasons: string[];
   score: number;
   type: LeadType;
+  watch?: Watch;
 }
 
 const fallbackExtra: Extra = {
@@ -114,6 +124,7 @@ const extras: Record<string, Extra> = {
     photo: photos.comps[3],
     reasons: ["Subscribed to monthly updates", "Just curious"],
     score: 24,
+    watch: { next: "Oct 1", opened: 0, sent: 0, since: "Sep 9" },
     type: "Watch",
   },
   "L-4818": {
@@ -141,6 +152,13 @@ const extras: Record<string, Extra> = {
       "Came back from the monthly email",
     ],
     score: 76,
+    watch: {
+      lastOpened: "Sep 9, 5:02 pm",
+      next: "Oct 1",
+      opened: 3,
+      sent: 3,
+      since: "Jun 2",
+    },
     type: "Buyers",
   },
   "L-4819": {
@@ -169,6 +187,7 @@ const extras: Record<string, Extra> = {
       "Selling in 6 to 12 months",
     ],
     score: 61,
+    watch: { next: "Oct 1", opened: 0, sent: 0, since: "Sep 10" },
     type: "Claimed",
   },
   "L-4820": {
@@ -244,6 +263,7 @@ const views = [
   { label: "Needs assignment", value: "unassigned" },
   { label: "Hot this week", value: "hot" },
   { label: "New", value: "new" },
+  { label: "Watching", value: "watching" },
 ] as const;
 type View = (typeof views)[number]["value"];
 
@@ -310,6 +330,9 @@ const matchesView = (row: Row, view: View, assigned: string): boolean => {
   }
   if (view === "new") {
     return row.status === "New";
+  }
+  if (view === "watching") {
+    return row.extra.watch !== undefined;
   }
   return true;
 };
@@ -714,6 +737,12 @@ function LeadRow({
       <Td>
         <div className="flex items-center gap-1.5 whitespace-nowrap font-medium">
           {row.name}
+          {row.extra.watch ? (
+            <Eye
+              aria-label="Watching monthly updates"
+              className="size-3.5 text-ink-muted"
+            />
+          ) : null}
           {row.extra.score >= HOT_THRESHOLD ? (
             <Flame
               aria-label="Hot lead"
@@ -943,6 +972,64 @@ function LeadDetail({
               Push now
             </button>
           </span>
+        )}
+      </div>
+
+      <div className="mt-4 rounded-[12px] border border-line p-3">
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-1.5 font-medium text-sm">
+            <Eye aria-hidden="true" className="size-4 text-ink-muted" />
+            Monthly updates
+          </span>
+          {row.extra.watch ? (
+            <Pill dot tone="good">
+              Subscribed
+            </Pill>
+          ) : (
+            <Pill tone="neutral">Not subscribed</Pill>
+          )}
+        </div>
+        {row.extra.watch ? (
+          <>
+            <dl className="mt-3 grid grid-cols-3 gap-3 text-sm">
+              <div>
+                <dt className="c-label">Since</dt>
+                <dd className="mt-0.5 font-medium">{row.extra.watch.since}</dd>
+              </div>
+              <div>
+                <dt className="c-label">Sent · opened</dt>
+                <dd className="tabular mt-0.5 font-medium">
+                  {row.extra.watch.sent} · {row.extra.watch.opened}
+                </dd>
+              </div>
+              <div>
+                <dt className="c-label">Next send</dt>
+                <dd className="mt-0.5 font-medium">{row.extra.watch.next}</dd>
+              </div>
+            </dl>
+            <p className="c-label mt-2">
+              {row.extra.watch.lastOpened
+                ? `Last opened ${row.extra.watch.lastOpened}.`
+                : "No update sent yet. The first one goes out with the next monthly run."}
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button className="btn btn-ghost btn-sm" type="button">
+                <Send aria-hidden="true" className="size-3.5" /> Send now
+              </button>
+              <button className="c-label px-2 hover:text-ink" type="button">
+                Unsubscribe
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <p className="c-label">
+              Not watching this home. An invite adds them to the monthly run.
+            </p>
+            <button className="btn btn-ghost btn-sm shrink-0" type="button">
+              Invite to watch
+            </button>
+          </div>
         )}
       </div>
 
