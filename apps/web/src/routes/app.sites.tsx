@@ -436,7 +436,12 @@ function SitesPage() {
                 <tr>
                   <Th>Deployment</Th>
                   <Th>Health</Th>
-                  <Th>30 days</Th>
+                  <th
+                    className="c-label hidden whitespace-nowrap border-line border-b px-3 py-2 text-left font-medium 2xl:table-cell"
+                    scope="col"
+                  >
+                    30 days
+                  </th>
                   <Th align="right">Reports</Th>
                   <Th align="right">Leads</Th>
                   <Th align="right">Rate</Th>
@@ -497,14 +502,14 @@ function SitesPage() {
                       <Td>
                         <HealthCell deployment={d} failing={failing} />
                       </Td>
-                      <Td>
+                      <td className="hidden border-line border-b px-3 py-2.5 2xl:table-cell">
                         <Sparkline
                           color={
                             d.reports > 0 ? "var(--c-brand)" : "oklch(0.82 0 0)"
                           }
                           data={d.trend}
                         />
-                      </Td>
+                      </td>
                       <Td align="right">{d.reports.toLocaleString("en-US")}</Td>
                       <Td align="right">{d.leads}</Td>
                       <Td align="right">
