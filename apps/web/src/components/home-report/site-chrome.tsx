@@ -1,45 +1,29 @@
 import { Link } from "@tanstack/react-router";
-import { Phone } from "lucide-react";
 
 import { AddressSearch } from "@/components/home-report/address-search";
+import { Logo } from "@/components/home-report/fieldgeist-logo";
 import { RelianceMark, TenantLogo } from "@/components/home-report/tenant-logo";
 import { useTenant } from "@/lib/tenant";
-import { track } from "@/lib/track";
 
+/** Percy demo header: the Fieldgeist logo and, on inner pages, the address search. No phone or agent CTA. */
 export function SiteHeader({ compact = false }: { compact?: boolean }) {
-  const { tenant } = useTenant();
   return (
-    <header className="wrap flex h-[4.5rem] items-center justify-between gap-6">
+    <header className="wrap grid h-[4.5rem] grid-cols-[1fr_auto_1fr] items-center gap-6">
       <Link
-        aria-label={`${tenant.name} home value`}
-        className="shrink-0"
+        aria-label="Fieldgeist address search"
+        className="shrink-0 justify-self-start"
         to="/home-report"
       >
-        <TenantLogo />
+        <Logo size="sm" />
       </Link>
       {compact ? (
-        <div className="hidden flex-1 justify-center md:flex">
+        <div className="hidden w-[28rem] max-w-full md:block">
           <AddressSearch variant="compact" />
         </div>
-      ) : null}
-      <div className="flex shrink-0 items-center gap-2">
-        <a
-          className="hidden items-center gap-2 px-3 text-[0.9375rem] text-ink hover:text-brand sm:inline-flex"
-          href={`tel:${tenant.phone.replace(/\D/g, "")}`}
-          onClick={() => track("agent_call_clicked", tenant.agent.name)}
-        >
-          <Phone aria-hidden="true" className="size-4" />
-          {tenant.phone}
-        </a>
-        {/* biome-ignore lint/a11y/useValidAnchor: the click handler only records analytics; the href still navigates */}
-        <a
-          className="btn btn-ghost btn-md rounded-full"
-          href="#agent"
-          onClick={() => track("cta_clicked", "Talk to an agent")}
-        >
-          Talk to an agent
-        </a>
-      </div>
+      ) : (
+        <span />
+      )}
+      <span />
     </header>
   );
 }

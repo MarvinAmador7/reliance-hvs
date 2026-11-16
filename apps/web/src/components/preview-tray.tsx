@@ -43,6 +43,11 @@ export function PreviewTray() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const events = useTrackedEvents();
 
+  // The Percy demo (the public home-report pages) runs without the design-preview tray.
+  if (pathname.startsWith("/home-report")) {
+    return null;
+  }
+
   return (
     <div
       className="fixed bottom-4 left-4 z-50 print:hidden"

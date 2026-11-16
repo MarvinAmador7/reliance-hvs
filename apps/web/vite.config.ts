@@ -11,6 +11,8 @@ export default defineConfig(({ command }) => ({
   },
   server: {
     port: 3001,
+    // Let other machines on the LAN open the dev server by its Bonjour name (e.g. marvins-mac-mini.local).
+    allowedHosts: [".local"],
   },
   // Bundle all SSR deps for production: Vercel functions have no node_modules at runtime.
   // In dev, bundling React as ESM breaks (`module is not defined`), so keep externals there.
